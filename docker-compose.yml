@@ -1,0 +1,24 @@
+version: '3.9'
+
+services:
+
+  postgres:
+    image: postgres:16
+
+    container_name: infrasight-postgres
+
+    restart: always
+
+    environment:
+      POSTGRES_USER: infrasight
+      POSTGRES_PASSWORD: strongpassword
+      POSTGRES_DB: infrasight
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
