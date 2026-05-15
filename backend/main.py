@@ -3,6 +3,7 @@ from fastapi.requests import Request
 from fastapi.responses import HTMLResponse
 from fastapi import FastAPI
 import boto3
+import os
 
 app = FastAPI()
 templates = Jinja2Templates(directory="backend/templates")
@@ -10,7 +11,10 @@ templates = Jinja2Templates(directory="backend/templates")
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
 
-    ec2 = boto3.client("ec2")
+    ec2 = boto3.client(
+    "ec2",
+    region_name=os.getenv("AWS_DEFAULT_REGION")
+)
 
     response = ec2.describe_instances()
 
@@ -47,7 +51,10 @@ def home(request: Request):
 @app.get("/instances")
 def get_instances():
 
-    ec2 = boto3.client("ec2")
+    ec2 = boto3.client(
+    "ec2",
+    region_name=os.getenv("AWS_DEFAULT_REGION")
+)
 
     response = ec2.describe_instances()
 
