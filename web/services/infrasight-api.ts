@@ -227,8 +227,13 @@ export function startSsoSignIn(payload: { email?: string; workspace_id?: string;
 }
 
 function authBackendUnavailable(error: unknown) {
-  return error instanceof Error && (
-    error.message.includes("/auth/") && error.message.includes("404")
+  if (!(error instanceof Error)) return false;
+
+  return (
+    (error.message.includes("/auth/") && error.message.includes("404")) ||
+    error.message === "Failed to fetch" ||
+    error.message.includes("NetworkError") ||
+    error.message.includes("Load failed")
   );
 }
 
