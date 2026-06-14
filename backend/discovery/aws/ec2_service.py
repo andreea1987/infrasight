@@ -1,12 +1,10 @@
 import boto3
-import os
 
 def get_ec2_instances():
 
-    ec2 = boto3.client(
-        "ec2",
-        region_name=os.getenv("AWS_DEFAULT_REGION")
-    )
+    ec2 = boto3.client("ec2")
+
+    region_name = ec2.meta.region_name or "unknown"
 
     response = ec2.describe_instances()
 
@@ -28,7 +26,14 @@ def get_ec2_instances():
                 "state": instance["State"]["Name"],
                 "instance_type": instance["InstanceType"],
                 "private_ip": instance.get("PrivateIpAddress"),
-                "public_ip": instance.get("PublicIpAddress")
+                "public_ip": instance.get("PublicIpAddress"),
+                "region": region_name,
+                "tags": {
+                    tag["Key"]: tag["Value"]
+                    for tag in instance.get("Tags", [])
+                },
+                "vpc": instance.get("VpcId"),
+                "subnet": instance.get("SubnetId"),
             })
 
     return instances

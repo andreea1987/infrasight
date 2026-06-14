@@ -1,0 +1,116 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 228 40% 4%;
+  --foreground: 220 30% 95%;
+  --card: 228 32% 8%;
+  --card-foreground: 220 30% 95%;
+  --muted: 228 26% 14%;
+  --muted-foreground: 225 14% 56%;
+  --border: 228 22% 17%;
+  --primary: 263 72% 66%;
+  --primary-foreground: 263 50% 8%;
+  --accent: 196 90% 55%;
+  --accent-foreground: 196 60% 8%;
+  --destructive: 4 78% 65%;
+  --destructive-foreground: 0 0% 100%;
+  --warning: 38 88% 60%;
+  --warning-foreground: 38 80% 10%;
+  --radius: 0.5rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 18% 8%, hsl(263 72% 66% / 0.13), transparent 28rem),
+    radial-gradient(circle at 88% 18%, hsl(196 90% 55% / 0.09), transparent 30rem),
+    radial-gradient(circle at 55% 85%, hsl(38 88% 60% / 0.06), transparent 28rem),
+    linear-gradient(hsl(228 30% 12% / 0.35) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(228 30% 12% / 0.35) 1px, transparent 1px),
+    hsl(var(--background));
+  background-size: 44px 44px;
+  color: hsl(var(--foreground));
+}
+
+::selection {
+  background: hsl(var(--primary) / 0.24);
+  color: hsl(var(--foreground));
+}
+
+button,
+input,
+select,
+textarea {
+  letter-spacing: 0;
+}
+
+/* Slim scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.4);
+}
+
+@layer components {
+  /* Shimmer top-border accent on cards */
+  .console-line::before {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    top: 0;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      hsl(var(--primary) / 0.65) 50%,
+      transparent 100%
+    );
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
+
+/* Recharts overrides */
+.recharts-default-tooltip {
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: 10px !important;
+  background: hsl(var(--card)) !important;
+  color: hsl(var(--foreground)) !important;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.4) !important;
+  font-size: 12px !important;
+  padding: 8px 12px !important;
+}
+
+.recharts-tooltip-label {
+  color: hsl(var(--muted-foreground)) !important;
+  font-size: 11px !important;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.recharts-cartesian-axis-tick-value {
+  fill: hsl(var(--muted-foreground)) !important;
+}
