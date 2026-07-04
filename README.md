@@ -5,6 +5,44 @@ Multi-tenant hybrid operations platform for infrastructure monitoring, observabi
 InfraSight provides a unified workspace view across cloud, on-premises, container, and Kubernetes resources. It combines a central inventory catalogue, provider-aware infrastructure views, alert management, email notifications, a shared connector framework, topology, automation foundations, and the read-only OpenClaw operations assistant.
 
 ---
+# InfraSight
+
+Multi-tenant hybrid operations platform for infrastructure monitoring, observability, connector onboarding, and incident management.
+
+InfraSight provides a unified workspace view across cloud, on-premises, container, and Kubernetes resources.
+
+---
+
+## Screenshots
+
+### Dashboard
+
+<img width="3836" height="2108" alt="image" src="https://github.com/user-attachments/assets/3ea94ae2-d89b-440e-99c3-1c555ab17a7e" />
+
+
+### Inventory
+
+<img width="3840" height="2114" alt="image" src="https://github.com/user-attachments/assets/bb1cddf1-8fbc-4aa5-82bd-b22409fb1174" />
+
+
+### Connectors
+
+<img width="3822" height="2116" alt="image" src="https://github.com/user-attachments/assets/2d461a2d-3ccd-4921-9d36-cfcfc64a765d" />
+<img width="3832" height="2114" alt="image" src="https://github.com/user-attachments/assets/7a3f8491-cddc-4483-bdbc-e076c2caba7c" />
+
+
+
+### Topology
+
+<img width="3840" height="2104" alt="image" src="https://github.com/user-attachments/assets/e089c083-e875-4f14-82f0-ed80840145ea" />
+
+
+### OpenClaw
+
+<img width="3820" height="2116" alt="image" src="https://github.com/user-attachments/assets/b78d517f-ee22-4bb3-aab3-a26ca3a0a443" />
+
+
+---
 
 ## Documentation
 
