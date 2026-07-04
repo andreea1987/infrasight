@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ControlToolbar, FilterChip, ToggleSwitch } from "@/components/ui/controls";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
@@ -143,30 +144,26 @@ function Step1Templates({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2">
+      <ControlToolbar>
         <Input
           placeholder="Search templates…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="h-8 max-w-64 text-xs"
+          className="max-w-64 text-xs"
         />
-        <div className="flex flex-wrap gap-1">
+        <ControlToolbar>
           {TEMPLATE_CATEGORIES.map((cat) => (
-            <button
+            <FilterChip
               key={cat}
               onClick={() => setCatFilter(catFilter === cat ? null : cat)}
-              className={cn(
-                "rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide transition-colors",
-                catFilter === cat
-                  ? "border-primary/60 bg-primary/15 text-primary"
-                  : "border-border text-muted-foreground hover:text-foreground",
-              )}
+              active={catFilter === cat}
+              className="text-[10px]"
             >
               {cat}
-            </button>
+            </FilterChip>
           ))}
-        </div>
-      </div>
+        </ControlToolbar>
+      </ControlToolbar>
 
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {visible.map((t) => {
@@ -212,17 +209,15 @@ function Step1Templates({
           <p className="text-xs font-medium">Start from scratch</p>
           <p className="text-[11px] text-muted-foreground">Build a custom rule without using a template.</p>
         </div>
-        <button
+        <Button
           onClick={() => onSelect(null)}
-          className={cn(
-            "ml-auto shrink-0 rounded-md border px-3 py-1 text-xs font-semibold transition-colors",
-            selected === null
-              ? "border-primary/60 bg-primary/15 text-primary"
-              : "border-border text-muted-foreground hover:text-foreground",
-          )}
+          className={cn("ml-auto text-xs", selected === null && "border-primary/60 bg-primary/15 text-primary")}
+          size="sm"
+          type="button"
+          variant={selected === null ? "default" : "secondary"}
         >
           {selected === null ? "Selected" : "Select"}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -299,13 +294,16 @@ function Step2Conditions({
           <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Conditions ({form.conditions.length})
           </span>
-          <button
+          <Button
             onClick={addCondition}
-            className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+            className="text-xs text-primary"
+            size="sm"
+            type="button"
+            variant="ghost"
           >
             <Plus className="size-3" />
             Add Condition
-          </button>
+          </Button>
         </div>
 
         {form.conditions.length === 0 && (
@@ -321,7 +319,7 @@ function Step2Conditions({
                 <span className="text-[10px] font-bold uppercase text-muted-foreground">AND</span>
               )}
               <Select
-                className="h-8 flex-1 min-w-[160px] text-xs"
+                className="flex-1 min-w-[160px] text-xs"
                 value={c.field}
                 onChange={(e) => updateCondition(c.id, { field: e.target.value })}
               >
@@ -330,7 +328,7 @@ function Step2Conditions({
                 ))}
               </Select>
               <Select
-                className="h-8 w-36 text-xs"
+                className="w-36 text-xs"
                 value={c.operator}
                 onChange={(e) => updateCondition(c.id, { operator: e.target.value })}
               >
@@ -339,7 +337,7 @@ function Step2Conditions({
                 ))}
               </Select>
               <Input
-                className="h-8 w-24 text-xs"
+                className="w-24 text-xs"
                 value={c.value}
                 onChange={(e) => updateCondition(c.id, { value: e.target.value })}
                 placeholder="Value"
@@ -347,12 +345,15 @@ function Step2Conditions({
               {c.unit && (
                 <span className="text-xs text-muted-foreground">{c.unit}</span>
               )}
-              <button
+              <Button
                 onClick={() => removeCondition(c.id)}
-                className="ml-auto rounded p-1 text-muted-foreground hover:text-destructive"
+                className="ml-auto hover:text-destructive"
+                size="icon"
+                type="button"
+                variant="ghost"
               >
                 <Trash2 className="size-3.5" />
-              </button>
+              </Button>
             </div>
           ))}
         </div>
@@ -459,18 +460,21 @@ function Step3Actions({
                       </span>
                       <span className="text-xs font-semibold">{cfg.label}</span>
                     </div>
-                    <button
+                    <Button
                       onClick={() => removeAction(action.id)}
-                      className="rounded p-0.5 text-muted-foreground hover:text-destructive"
+                      className="hover:text-destructive"
+                      size="icon"
+                      type="button"
+                      variant="ghost"
                     >
                       <X className="size-3.5" />
-                    </button>
+                    </Button>
                   </div>
 
                   <div className="flex flex-wrap gap-2">
                     {action.type === "alert" && (
                       <Select
-                        className="h-7 w-28 text-xs"
+                        className="w-28 text-xs"
                         value={action.severity ?? "warning"}
                         onChange={(e) => updateAction(action.id, { severity: e.target.value as AutomationAction["severity"] })}
                       >
@@ -482,7 +486,7 @@ function Step3Actions({
 
                     {action.type === "notification" && (
                       <Select
-                        className="h-7 flex-1 min-w-[160px] text-xs"
+                        className="flex-1 min-w-[160px] text-xs"
                         value={action.channelId?.toString() ?? ""}
                         onChange={(e) => {
                           const ch = channels.find((c) => c.id === Number(e.target.value));
@@ -502,7 +506,7 @@ function Step3Actions({
                     )}
 
                     <Input
-                      className="h-7 flex-1 min-w-[200px] text-xs"
+                      className="flex-1 min-w-[200px] text-xs"
                       value={action.message}
                       onChange={(e) => updateAction(action.id, { message: e.target.value })}
                       placeholder="Message template — use {{resource.name}}, {{metric.value}}"
@@ -613,20 +617,7 @@ function Step4Review({
           <p className="text-sm font-medium">Enable rule after creation</p>
           <p className="text-xs text-muted-foreground">Rule will start evaluating immediately when enabled.</p>
         </div>
-        <button
-          onClick={() => onChange({ enabled: !form.enabled })}
-          className={cn(
-            "relative h-6 w-11 rounded-full transition-colors",
-            form.enabled ? "bg-primary" : "bg-muted",
-          )}
-        >
-          <span
-            className={cn(
-              "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform",
-              form.enabled ? "translate-x-5" : "translate-x-0.5",
-            )}
-          />
-        </button>
+        <ToggleSwitch checked={form.enabled} onClick={() => onChange({ enabled: !form.enabled })} />
       </div>
     </div>
   );
@@ -730,12 +721,15 @@ export function AutomationWizard({
             {step === 4 && "Review your configuration and enable the rule."}
           </p>
         </div>
-        <button
+        <Button
           onClick={onCancel}
-          className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+          aria-label="Close automation wizard"
+          size="icon"
+          type="button"
+          variant="ghost"
         >
           <X className="size-4" />
-        </button>
+        </Button>
       </div>
 
       <StepBar step={step} />

@@ -9,6 +9,7 @@ class ResourceResponse(BaseModel):
     resource_id: str
     provider: str
     resource_type: str
+    platform: Optional[str] = None
     name: str
     region: str
     status: str

@@ -126,7 +126,7 @@ export function AIInsights({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Sparkles className="size-3.5 text-primary" />
-          AI Operational Insights
+          AI Operational Summary
         </CardTitle>
       </CardHeader>
       <CardContent className="grid gap-2 sm:grid-cols-2">

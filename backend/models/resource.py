@@ -13,6 +13,7 @@ class Resource(Base):
     provider = Column(String)
     resource_id = Column(String, unique=True)
     resource_type = Column(String)
+    platform = Column(String, nullable=True)
 
     name = Column(String)
     region = Column(String)

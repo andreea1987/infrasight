@@ -30,10 +30,24 @@ import { ResourceDetailsPage } from "@/components/dashboard/resource-details-pag
 import { SignInPage } from "@/components/dashboard/sign-in-page";
 import type { SummaryMetricTarget } from "@/components/dashboard/summary-cards";
 import { TopologyPage } from "@/components/dashboard/topology-page";
-import { Select } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { ControlToolbar } from "@/components/ui/controls";
 import { navigationGroups } from "@/dashboard/navigation";
+import {
+  HEALTH_OPTIONS,
+  PLATFORM_OPTIONS,
+  RESOURCE_TYPE_OPTIONS,
+  STATUS_OPTIONS,
+  providerConfig,
+  resourceHealth,
+  resourcePlatform,
+  resourceProvider,
+  resourceStatus,
+  resourceType,
+  supportedProviderValues,
+} from "@/dashboard/resourceClassification";
 import { countBy, toChartData } from "@/dashboard/utils";
-import { buildWorkspaceContext } from "@/dashboard/workspace";
+import { buildWorkspaceContext, organizationIdFromWorkspace } from "@/dashboard/workspace";
 import { useInfraSightData } from "@/hooks/use-infrasight-data";
 import { cn } from "@/lib/utils";
 import {
@@ -45,11 +59,21 @@ import {
   setAuthContext,
   setActiveOrganization,
 } from "@/services/infrasight-api";
-import type { AlertRecord, AuthSession, Organization, OrganizationContext, Resource, Section } from "@/types/infrasight";
+import type {
+  AlertRecord,
+  AuthSession,
+  MonitoringSummary,
+  Organization,
+  OrganizationContext,
+  Resource,
+  Section,
+  Workspace,
+  WorkspaceGroup,
+} from "@/types/infrasight";
 
 type ResourceMetricFilter =
   | { kind: "all"; label: string }
-  | { kind: "health"; status: "Healthy" | "Warning" | "Critical"; label: string }
+  | { kind: "health"; status: "healthy" | "warning" | "critical"; label: string }
   | { kind: "health-score"; label: string }
   | { kind: "unified"; label: string };
 
@@ -63,6 +87,7 @@ export default function InfraSightConsole() {
   const [provider, setProvider] = useState("all");
   const [status, setStatus] = useState("all");
   const [assetType, setAssetType] = useState("all");
+  const [assetPlatform, setAssetPlatform] = useState("all");
   const [assetHealth, setAssetHealth] = useState("all");
   const [assetClient, setAssetClient] = useState("all");
   const [selectedResourceId, setSelectedResourceId] = useState<number | string | null>(null);
@@ -76,6 +101,8 @@ export default function InfraSightConsole() {
   const [syncMenuOpen, setSyncMenuOpen] = useState(false);
   const [authSession, setAuthSession] = useState<AuthSession | null>(null);
   const [authChecking, setAuthChecking] = useState(true);
+  const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
+  const activeOrganizationId = organizationIdFromWorkspace(activeWorkspaceId);
 
   const {
     addChannel,
@@ -91,7 +118,7 @@ export default function InfraSightConsole() {
     resources,
     runAction,
     summary,
-  } = useInfraSightData(activeWorkspaceId);
+  } = useInfraSightData(activeWorkspaceId, activeOrganizationId);
 
   useEffect(() => {
     fetchAuthSession()
@@ -107,29 +134,37 @@ export default function InfraSightConsole() {
   }, []);
 
   useEffect(() => {
-    setActiveOrganization(activeWorkspaceId);
+    setActiveOrganization(activeWorkspaceId, activeOrganizationId);
     fetchOrganizations()
       .then(setOrganizations)
       .catch(() => undefined);
     fetchOrganizationContext()
       .then(setOrganizationContext)
       .catch(() => undefined);
-  }, [activeWorkspaceId]);
+  }, [activeOrganizationId, activeWorkspaceId]);
 
   const syncProviderResources = async (path: string, nextProvider: string) => {
-    setActiveSection("Assets");
+    setActiveSection("Inventory");
     setProvider(nextProvider);
     setStatus("all");
+    setAssetType("all");
+    setAssetPlatform("all");
     setQuery("");
     setResourceMetricFilter(null);
     setSyncMenuOpen(false);
     await runAction(path);
   };
 
+  const runProviderDiscovery = async (providerValue: string) => {
+    const providerDetails = providerConfig(providerValue);
+    if (!providerDetails?.actionPath || providerDetails.comingSoon) return;
+    await syncProviderResources(providerDetails.actionPath, providerValue);
+  };
+
   const runDiscoveryTypes = async (discoveryTypes: string[]) => {
     setDiscoveryBusy(true);
     try {
-      setActiveOrganization(activeWorkspaceId);
+      setActiveOrganization(activeWorkspaceId, activeOrganizationId);
       await runDiscovery(discoveryTypes);
       await loadAll();
     } finally {
@@ -137,13 +172,37 @@ export default function InfraSightConsole() {
     }
   };
 
+  const workspaceContext = useMemo(
+    () =>
+      buildWorkspaceContext({
+        activeWorkspaceId,
+        alerts,
+        organizations,
+        resources,
+      }),
+    [activeWorkspaceId, alerts, organizations, resources],
+  );
+  const scopedResources = useMemo(
+    () => resources.filter((resource) => matchesWorkspaceScope(resource, workspaceContext.activeWorkspace.id)),
+    [resources, workspaceContext.activeWorkspace.id],
+  );
+  const scopedAlerts = useMemo(
+    () => alerts.filter((alert) => matchesWorkspaceScope(alert, workspaceContext.activeWorkspace.id)),
+    [alerts, workspaceContext.activeWorkspace.id],
+  );
+  const scopedSummary = useMemo(
+    () => buildScopedSummary(scopedResources, scopedAlerts, summary),
+    [scopedAlerts, scopedResources, summary],
+  );
+
   const filteredResources = useMemo(() => {
     const lowerQuery = query.toLowerCase();
-    const nextResources = resources.filter((resource) => {
-      const matchesProvider = provider === "all" || resource.provider === provider;
-      const matchesStatus = status === "all" || resource.status === status;
-      const matchesType = assetType === "all" || resource.resource_type === assetType;
-      const matchesHealth = assetHealth === "all" || resource.health_status === assetHealth;
+    const nextResources = scopedResources.filter((resource) => {
+      const matchesProvider = provider === "all" || resourceProvider(resource) === provider;
+      const matchesStatus = status === "all" || resourceStatus(resource) === status;
+      const matchesType = assetType === "all" || resourceType(resource) === assetType;
+      const matchesPlatform = assetPlatform === "all" || resourcePlatform(resource) === assetPlatform;
+      const matchesHealth = assetHealth === "all" || resourceHealth(resource) === assetHealth;
       const client = resource.organization_id ?? resource.tenant_id ?? "internal";
       const matchesClient = assetClient === "all" || client === assetClient;
       const matchesQuery = [resource.name, resource.region, resource.resource_type]
@@ -153,6 +212,7 @@ export default function InfraSightConsole() {
         matchesProvider &&
         matchesStatus &&
         matchesType &&
+        matchesPlatform &&
         matchesHealth &&
         matchesClient &&
         (!lowerQuery || matchesQuery) &&
@@ -165,35 +225,29 @@ export default function InfraSightConsole() {
     }
 
     return nextResources;
-  }, [assetClient, assetHealth, assetType, provider, query, resourceMetricFilter, resources, status]);
+  }, [assetClient, assetHealth, assetPlatform, assetType, provider, query, resourceMetricFilter, scopedResources, status]);
 
-  const providerData = toChartData(countBy(resources, "provider"));
-  const statusData = toChartData(countBy(resources, "status"));
-  const typeData = toChartData(countBy(resources, "resource_type"));
-  const openAlerts = alerts.filter((a) => a.status === "open");
-  const workspaceContext = useMemo(
-    () =>
-      buildWorkspaceContext({
-        activeWorkspaceId,
-        alerts,
-        organizations,
-        resources,
-      }),
-    [activeWorkspaceId, alerts, organizations, resources],
-  );
+  const statusData = toChartData(countBy(scopedResources, "status"));
+  const openAlerts = scopedAlerts.filter((a) => a.status === "open");
   const filteredAlerts = useMemo(
-    () => alerts.filter((alert) => matchesAlertMetricFilter(alert, alertMetricFilter)),
-    [alertMetricFilter, alerts],
+    () => scopedAlerts.filter((alert) => matchesAlertMetricFilter(alert, alertMetricFilter)),
+    [alertMetricFilter, scopedAlerts],
   );
-  const databaseResources = resources.filter(isDatabaseResource);
-  const serverResources = resources.filter(isServerResource);
-  const containerResources = resources.filter(isContainerResource);
-  const kubernetesResources = resources.filter(isKubernetesResource);
-  const providerOptions = ["all", ...new Set([...Object.keys(countBy(resources, "provider")), provider])];
-  const assetTypeOptions = ["all", ...Object.keys(countBy(resources, "resource_type"))];
-  const assetHealthOptions = ["all", "Healthy", "Warning", "Critical"];
-  const assetClientOptions = ["all", ...new Set(resources.map((r) => r.organization_id ?? r.tenant_id ?? "internal"))];
-  const selectedResource = resources.find((resource) => resource.id === selectedResourceId);
+  const databaseResources = scopedResources.filter(isDatabaseResource);
+  const serverResources = scopedResources.filter(isServerResource);
+  const containerResources = scopedResources.filter(isContainerResource);
+  const kubernetesResources = scopedResources.filter(isKubernetesResource);
+  const providerOptions = ["all", ...supportedProviderValues()];
+  const providerCounts = useMemo(
+    () => countValues(scopedResources.map(resourceProvider)),
+    [scopedResources],
+  );
+  const assetTypeOptions = ["all", ...optionValues(RESOURCE_TYPE_OPTIONS)];
+  const assetPlatformOptions = ["all", ...optionValues(PLATFORM_OPTIONS)];
+  const assetHealthOptions = ["all", ...optionValues(HEALTH_OPTIONS)];
+  const assetStatusOptions = ["all", ...optionValues(STATUS_OPTIONS)];
+  const assetClientOptions = ["all", ...new Set(scopedResources.map((r) => r.organization_id ?? r.tenant_id ?? "internal"))];
+  const selectedResource = scopedResources.find((resource) => resource.id === selectedResourceId);
 
   function navigate(section: Section) {
     setActiveSection(section);
@@ -216,6 +270,7 @@ export default function InfraSightConsole() {
     setProvider("all");
     setStatus("all");
     setAssetType("all");
+    setAssetPlatform("all");
     setAssetHealth("all");
     setAssetClient("all");
     setQuery("");
@@ -241,19 +296,21 @@ export default function InfraSightConsole() {
       return;
     }
 
-    setActiveSection("Assets");
+    setActiveSection("Inventory");
     setProvider("all");
     setStatus("all");
+    setAssetType("all");
+    setAssetPlatform("all");
     setQuery("");
 
     if (target === "total-resources") {
       setResourceMetricFilter({ kind: "all", label: "All resources" });
     } else if (target === "healthy-resources") {
-      setResourceMetricFilter({ kind: "health", status: "Healthy", label: "Healthy resources" });
+      setResourceMetricFilter({ kind: "health", status: "healthy", label: "Healthy resources" });
     } else if (target === "warning-resources") {
-      setResourceMetricFilter({ kind: "health", status: "Warning", label: "Warning resources" });
+      setResourceMetricFilter({ kind: "health", status: "warning", label: "Warning resources" });
     } else if (target === "critical-resources") {
-      setResourceMetricFilter({ kind: "health", status: "Critical", label: "Critical resources" });
+      setResourceMetricFilter({ kind: "health", status: "critical", label: "Critical resources" });
     } else if (target === "estate-health-score") {
       setResourceMetricFilter({ kind: "health-score", label: "Sorted by health score" });
     }
@@ -330,7 +387,7 @@ export default function InfraSightConsole() {
                     key={item.name}
                     onClick={() => navigate(item.name)}
                     className={cn(
-                      "group relative flex h-9 w-full items-center gap-2.5 rounded-lg px-3 text-sm transition-all",
+                      "group relative flex h-9 w-full items-center gap-2.5 rounded-md px-3 text-sm outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25",
                       active
                         ? "bg-primary/10 text-foreground"
                         : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
@@ -357,24 +414,19 @@ export default function InfraSightConsole() {
                 {workspaceContext.activeWorkspace.status}
               </span>
             </div>
-            <Select
-              aria-label="Workspace"
-              className="w-full text-xs"
-              value={activeWorkspaceId}
-              onChange={(event) => {
-                const workspaceId = event.target.value;
-                setActiveWorkspaceId(workspaceId);
-                setActiveOrganization(workspaceId);
+            <WorkspaceSelector
+              activeWorkspaceId={activeWorkspaceId}
+              groups={workspaceContext.groups}
+              open={workspaceMenuOpen}
+              onOpenChange={setWorkspaceMenuOpen}
+              onSelect={(workspace) => {
+                setActiveWorkspaceId(workspace.id);
+                setActiveOrganization(workspace.id, workspace.organization_id);
                 setSelectedResourceId(null);
                 clearMetricFilters();
+                setWorkspaceMenuOpen(false);
               }}
-            >
-              {workspaceContext.workspaces.map((workspace) => (
-                <option key={workspace.id} value={workspace.id}>
-                  {workspace.name}
-                </option>
-              ))}
-            </Select>
+            />
             <div className="grid grid-cols-3 gap-1 text-center">
               <WorkspaceStat label="Resources" value={workspaceContext.activeWorkspace.resource_count} />
               <WorkspaceStat label="Alerts" value={workspaceContext.activeWorkspace.alert_count} />
@@ -388,7 +440,7 @@ export default function InfraSightConsole() {
             </p>
           )}
 
-          <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-1.5">
+          <div className="flex min-h-9 items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-1.5">
             <span className="relative flex size-2">
               {isConnected && (
                 <span className="absolute inline-flex size-full rounded-full bg-primary opacity-75 animate-pulse-ring" />
@@ -413,13 +465,16 @@ export default function InfraSightConsole() {
         <header className="console-line sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-4 border-b border-border bg-card/70 px-5 backdrop-blur-xl">
           {/* Left: mobile menu + section title */}
           <div className="flex min-w-0 items-center gap-3">
-            <button
-              className="flex size-8 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted hover:text-foreground transition-colors lg:hidden"
+            <Button
+              className="lg:hidden"
               onClick={() => setSidebarOpen((v) => !v)}
               aria-label="Menu"
+              size="icon"
+              type="button"
+              variant="ghost"
             >
               {sidebarOpen ? <X className="size-4" /> : <Menu className="size-4" />}
-            </button>
+            </Button>
             <div className="min-w-0">
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary/70">
                 Hybrid Operations
@@ -431,9 +486,9 @@ export default function InfraSightConsole() {
           </div>
 
           {/* Right: real-time status + notification centre + sync menu */}
-          <div className="flex shrink-0 items-center gap-2">
+          <ControlToolbar className="shrink-0">
             {/* Real-time connection indicator */}
-            <div className="hidden items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-1.5 sm:flex">
+            <div className="hidden min-h-9 items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-1.5 sm:flex">
               <span className="relative flex size-2">
                 {isConnected && (
                   <span className="absolute inline-flex size-full rounded-full bg-primary opacity-70 animate-pulse-ring" />
@@ -453,18 +508,21 @@ export default function InfraSightConsole() {
 
             {/* Sync dropdown — triggers provider sync and metric collection */}
             <div className="relative">
-              <button
+              <Button
                 onClick={() => setSyncMenuOpen((v) => !v)}
                 disabled={busy}
+                size="sm"
+                type="button"
+                variant="secondary"
                 className={cn(
-                  "flex items-center gap-1.5 rounded-lg border border-border bg-muted/30 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground disabled:opacity-50",
+                  "bg-muted/30 text-muted-foreground",
                   syncMenuOpen && "bg-muted text-foreground",
                 )}
               >
                 <RefreshCw className={cn("size-3.5", busy && "animate-spin")} />
                 <span className="hidden sm:inline">Sync</span>
                 <ChevronDown className={cn("size-3 transition-transform", syncMenuOpen && "rotate-180")} />
-              </button>
+              </Button>
 
               <AnimatePresence>
                 {syncMenuOpen && (
@@ -478,7 +536,7 @@ export default function InfraSightConsole() {
                     {[
                       { label: "Sync AWS EC2", path: "/sync/ec2", prov: "aws" },
                       { label: "Sync Azure VMs", path: "/sync/azure/vms", prov: "azure" },
-                      { label: "Sync On-Prem", path: "/sync/onprem/local", prov: "onprem" },
+                      { label: "Sync On-Prem", path: "/sync/onprem/local", prov: "on_prem" },
                       { label: "Collect Metrics", path: "/monitoring/collect", prov: "" },
                     ].map(({ label, path, prov }) => (
                       <button
@@ -489,7 +547,7 @@ export default function InfraSightConsole() {
                             : (runAction(path), setSyncMenuOpen(false))
                         }
                         disabled={busy}
-                        className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        className="flex min-h-9 w-full items-center gap-2.5 px-4 py-2.5 text-sm text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground"
                       >
                         <RefreshCw className="size-3.5 shrink-0" />
                         {label}
@@ -500,16 +558,19 @@ export default function InfraSightConsole() {
               </AnimatePresence>
             </div>
 
-            <button
+            <Button
               onClick={handleLogout}
-              className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/30 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:bg-muted hover:text-foreground"
+              className="bg-muted/30 text-muted-foreground"
               aria-label="Log out"
+              size="sm"
+              type="button"
+              variant="secondary"
             >
               <LogOut className="size-3.5" />
               <span className="hidden sm:inline">Logout</span>
-            </button>
+            </Button>
 
-          </div>
+          </ControlToolbar>
         </header>
 
         {/* Content area — animated section transitions */}
@@ -527,40 +588,33 @@ export default function InfraSightConsole() {
                 {selectedResource ? (
                   isDatabaseResource(selectedResource) ? (
                     <DatabaseDetailsView
-                      alerts={alerts}
+                      alerts={scopedAlerts}
                       database={selectedResource}
                       metrics={metrics}
                       onBack={() => setSelectedResourceId(null)}
                     />
                   ) : (
                     <ResourceDetailsPage
-                      alerts={alerts}
+                      alerts={scopedAlerts}
                       metrics={metrics}
                       onBack={() => setSelectedResourceId(null)}
                       onSelectResource={openResourceDetails}
                       resource={selectedResource}
-                      resources={resources}
+                      resources={scopedResources}
                     />
                   )
                 ) : activeSection === "Dashboard" && (
                   <DashboardOverview
-                    alerts={alerts}
-                    channels={channels}
+                    alerts={scopedAlerts}
                     lastEvent={lastEvent}
-                    onOpenTopology={() => {
-                      setSelectedResourceId(null);
-                      setActiveSection("Topology");
-                    }}
                     onSummaryMetricClick={handleSummaryMetricClick}
                     openAlerts={openAlerts}
-                    providerData={providerData}
-                    resources={resources}
+                    resources={scopedResources}
                     statusData={statusData}
-                    summary={summary}
-                    typeData={typeData}
+                    summary={scopedSummary}
                   />
                 )}
-                {!selectedResource && activeSection === "Assets" && (
+                {!selectedResource && activeSection === "Inventory" && (
                   <InventoryPanel
                     activeFilterLabel={resourceMetricFilter?.label}
                     clearActiveFilter={clearResourceFilters}
@@ -568,8 +622,13 @@ export default function InfraSightConsole() {
                     clients={assetClientOptions}
                     health={assetHealth}
                     healthStates={assetHealthOptions}
+                    platform={assetPlatform}
+                    platforms={assetPlatformOptions}
                     provider={provider}
+                    providerActionBusy={busy}
+                    providerCounts={providerCounts}
                     providers={providerOptions}
+                    onProviderAction={runProviderDiscovery}
                     onSelectResource={openResourceDetails}
                     query={query}
                     resources={filteredResources}
@@ -577,17 +636,18 @@ export default function InfraSightConsole() {
                     resourceTypes={assetTypeOptions}
                     setClient={setAssetClient}
                     setHealth={setAssetHealth}
+                    setPlatform={setAssetPlatform}
                     setProvider={setProvider}
                     setQuery={setQuery}
                     setResourceType={setAssetType}
                     setStatus={setStatus}
                     status={status}
-                    statuses={["all", ...Object.keys(countBy(resources, "status"))]}
+                    statuses={assetStatusOptions}
                   />
                 )}
                 {!selectedResource && activeSection === "Servers" && (
                   <InfrastructureResourcePage
-                    alerts={alerts}
+                    alerts={scopedAlerts}
                     busy={busy || discoveryBusy}
                     discoveryActions={[
                       { label: "Discover Linux", discoveryTypes: ["linux_ssh"] },
@@ -611,13 +671,13 @@ export default function InfraSightConsole() {
                     channels={channels}
                     clearActiveFilter={() => setAlertMetricFilter(null)}
                     refresh={loadAll}
-                    resources={resources}
-                    summary={summary}
+                    resources={scopedResources}
+                    summary={scopedSummary}
                   />
                 )}
                 {!selectedResource && activeSection === "Databases" && (
                   <DatabasePanel
-                    alerts={alerts}
+                    alerts={scopedAlerts}
                     busy={busy || discoveryBusy}
                     metrics={metrics}
                     onRunDiscovery={runDiscoveryTypes}
@@ -633,7 +693,7 @@ export default function InfraSightConsole() {
                 )}
                 {!selectedResource && activeSection === "Containers" && (
                   <InfrastructureResourcePage
-                    alerts={alerts}
+                    alerts={scopedAlerts}
                     busy={busy || discoveryBusy}
                     discoveryActions={[{ label: "Discover Docker", discoveryTypes: ["docker"] }]}
                     kind="containers"
@@ -647,7 +707,7 @@ export default function InfraSightConsole() {
                 )}
                 {!selectedResource && activeSection === "Kubernetes" && (
                   <InfrastructureResourcePage
-                    alerts={alerts}
+                    alerts={scopedAlerts}
                     busy={busy || discoveryBusy}
                     discoveryActions={[{ label: "Discover Kubernetes", discoveryTypes: ["kubernetes"] }]}
                     kind="kubernetes"
@@ -660,19 +720,31 @@ export default function InfraSightConsole() {
                   />
                 )}
                 {!selectedResource && activeSection === "Topology" && (
-                  <TopologyPage onSelectResource={openResourceDetails} resources={resources} alerts={alerts} />
+                  <TopologyPage onSelectResource={openResourceDetails} resources={scopedResources} alerts={scopedAlerts} />
                 )}
                 {!selectedResource && activeSection === "Connectors" && (
                   <ConnectorsPage
-                    resources={resources}
+                    onRefreshWorkspace={loadAll}
+                    resources={scopedResources}
                     workspace={workspaceContext.activeWorkspace}
                   />
                 )}
-                {!selectedResource && activeSection === "Settings" && (
+                {!selectedResource && activeSection === "Notifications" && (
                   <NotificationSettings
                     channelAction={channelAction}
                     channels={channels}
                     deliveries={deliveries}
+                    mode="notifications"
+                    onAddChannel={addChannel}
+                    workspaceId={activeWorkspaceId}
+                  />
+                )}
+                {!selectedResource && activeSection === "Administration" && (
+                  <NotificationSettings
+                    channelAction={channelAction}
+                    channels={channels}
+                    deliveries={deliveries}
+                    mode="administration"
                     onAddChannel={addChannel}
                     workspaceId={activeWorkspaceId}
                   />
@@ -701,59 +773,112 @@ function WorkspaceStat({ label, value }: { label: string; value: number | string
   );
 }
 
-function isDatabaseResource(resource: Resource) {
-  const resourceType = resource.resource_type.toLowerCase();
+function WorkspaceSelector({
+  activeWorkspaceId,
+  groups,
+  onOpenChange,
+  onSelect,
+  open,
+}: {
+  activeWorkspaceId: string;
+  groups: WorkspaceGroup[];
+  onOpenChange: (open: boolean) => void;
+  onSelect: (workspace: Workspace) => void;
+  open: boolean;
+}) {
+  const activeWorkspace = groups
+    .flatMap((group) => group.workspaces)
+    .find((workspace) => workspace.id === activeWorkspaceId);
+
   return (
-    resourceType.includes("database") ||
-    resourceType.includes("postgres") ||
-    resourceType.includes("sql") ||
-    resourceType.includes("rds")
+    <div className="relative">
+      <button
+        aria-expanded={open}
+        aria-label="Workspace selector"
+        className="flex min-h-9 w-full items-center justify-between gap-2 rounded-md border border-border bg-background/70 px-3 py-2 text-left outline-none transition-colors hover:bg-muted/50 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25"
+        onClick={() => onOpenChange(!open)}
+        type="button"
+      >
+        <span className="min-w-0">
+          <span className="block truncate text-xs font-semibold">
+            {activeWorkspace?.organization_name ?? "Organization"}
+          </span>
+          <span className="block truncate text-[11px] text-muted-foreground">
+            {activeWorkspace?.environment ?? "Production"}
+          </span>
+        </span>
+        <ChevronDown className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            className="absolute bottom-full left-0 z-50 mb-2 max-h-80 w-full overflow-y-auto rounded-xl border border-border bg-card p-2 shadow-console"
+            exit={{ opacity: 0, y: 4, scale: 0.98 }}
+            initial={{ opacity: 0, y: 4, scale: 0.98 }}
+            transition={{ duration: 0.12 }}
+          >
+            {groups.map((group) => (
+              <div className="space-y-1 pb-2 last:pb-0" key={group.organization_id}>
+                <p className="truncate px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  {group.organization_name}
+                </p>
+                {group.workspaces.map((workspace) => {
+                  const active = workspace.id === activeWorkspaceId;
+                  return (
+                    <button
+                      className={cn(
+                        "flex min-h-9 w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-xs outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25",
+                        active
+                          ? "bg-primary/10 text-foreground"
+                          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                      )}
+                      key={workspace.id}
+                      onClick={() => onSelect(workspace)}
+                      type="button"
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium">{workspace.environment}</span>
+                        <span className="block text-[10px] text-muted-foreground">
+                          {workspace.resource_count} resources · {workspace.alert_count} alerts
+                        </span>
+                      </span>
+                      <span className="shrink-0 rounded-full border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                        {workspace.health_score}%
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
+}
+
+function isDatabaseResource(resource: Resource) {
+  return resourceType(resource) === "database";
 }
 
 function isServerResource(resource: Resource) {
-  const provider = resource.provider.toLowerCase();
-  const resourceType = resource.resource_type.toLowerCase();
-  const metadataText = `${String(resource.metadata?.os ?? "")} ${String(resource.metadata?.platform ?? "")}`.toLowerCase();
-
-  if (isDatabaseResource(resource) || isContainerResource(resource) || isKubernetesResource(resource)) {
-    return false;
-  }
-
-  return (
-    resourceType.includes("server") ||
-    resourceType.includes("host") ||
-    resourceType.includes("vm") ||
-    resourceType.includes("ec2") ||
-    resourceType.includes("linux") ||
-    resourceType.includes("windows") ||
-    provider === "aws" ||
-    provider === "azure" ||
-    metadataText.includes("linux") ||
-    metadataText.includes("windows")
-  );
+  const type = resourceType(resource);
+  return type === "server" || type === "virtual_machine";
 }
 
 function isContainerResource(resource: Resource) {
-  const provider = resource.provider.toLowerCase();
-  const resourceType = resource.resource_type.toLowerCase();
-  return resourceType.includes("container") || resourceType.includes("docker") || provider === "docker";
+  return resourceType(resource) === "container";
 }
 
 function isKubernetesResource(resource: Resource) {
-  const provider = resource.provider.toLowerCase();
-  const resourceType = resource.resource_type.toLowerCase();
-  return (
-    provider === "kubernetes" ||
-    ["deployment", "pod", "service", "namespace", "cluster", "node"].some((type) =>
-      resourceType.includes(type),
-    )
-  );
+  return resourceType(resource) === "kubernetes_cluster";
 }
 
 function matchesResourceMetricFilter(resource: Resource, filter: ResourceMetricFilter | null) {
   if (!filter || filter.kind === "all" || filter.kind === "health-score") return true;
-  if (filter.kind === "health") return resource.health_status === filter.status;
+  if (filter.kind === "health") return resourceHealth(resource) === filter.status;
   if (filter.kind === "unified") return Boolean(resource.provider || resource.metadata?.connector_type);
   return true;
 }
@@ -765,4 +890,63 @@ function matchesAlertMetricFilter(alert: AlertRecord, filter: AlertMetricFilter 
     return alert.status === "open";
   }
   return true;
+}
+
+function matchesWorkspaceScope(
+  record: { tenant_id?: string; organization_id?: string },
+  activeWorkspaceId: string,
+) {
+  const recordWorkspaceId = record.tenant_id ?? record.organization_id ?? "internal";
+  const recordOrganizationId = record.organization_id ?? organizationIdFromWorkspace(recordWorkspaceId);
+
+  if (activeWorkspaceId.includes(":")) {
+    return recordWorkspaceId === activeWorkspaceId;
+  }
+
+  return recordWorkspaceId === activeWorkspaceId || (!record.tenant_id && recordOrganizationId === activeWorkspaceId);
+}
+
+function buildScopedSummary(
+  resources: Resource[],
+  alerts: AlertRecord[],
+  fallback: MonitoringSummary,
+): MonitoringSummary {
+  if (!resources.length && !alerts.length) {
+    return {
+      total_resources: 0,
+      healthy_percentage: 100,
+      running_percentage: 100,
+      open_alerts: 0,
+      critical_alerts: 0,
+      warning_alerts: 0,
+    };
+  }
+
+  const openAlerts = alerts.filter((alert) => alert.status === "open");
+  const healthyResources = resources.filter((resource) => resourceHealth(resource) === "healthy");
+  const runningResources = resources.filter((resource) => resourceStatus(resource) === "running");
+
+  return {
+    total_resources: resources.length,
+    healthy_percentage: resources.length
+      ? Math.round((healthyResources.length / resources.length) * 100)
+      : fallback.healthy_percentage,
+    running_percentage: resources.length
+      ? Math.round((runningResources.length / resources.length) * 100)
+      : fallback.running_percentage,
+    open_alerts: openAlerts.length,
+    critical_alerts: openAlerts.filter((alert) => alert.severity === "critical").length,
+    warning_alerts: openAlerts.filter((alert) => alert.severity === "warning").length,
+  };
+}
+
+function countValues(values: string[]) {
+  return values.reduce<Record<string, number>>((counts, value) => {
+    if (value) counts[value] = (counts[value] ?? 0) + 1;
+    return counts;
+  }, {});
+}
+
+function optionValues(options: readonly { value: string }[]) {
+  return options.map((option) => option.value);
 }

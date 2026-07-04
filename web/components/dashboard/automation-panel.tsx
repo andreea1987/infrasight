@@ -8,14 +8,13 @@ import {
   Clock,
   Play,
   Plus,
-  Search,
   Settings2,
   Zap,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { ControlToolbar, FilterChip, SearchField } from "@/components/ui/controls";
 import { cn } from "@/lib/utils";
 import type { NotificationChannel } from "@/types/infrasight";
 import { AutomationWizard } from "./automation-wizard";
@@ -109,33 +108,26 @@ function TemplateLibrary({
         </Button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search templates…"
-            className="h-8 pl-8 text-xs max-w-64"
-          />
-        </div>
-        <div className="flex flex-wrap gap-1">
+      <ControlToolbar>
+        <SearchField
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search templates…"
+          className="max-w-64"
+        />
+        <ControlToolbar>
           {TEMPLATE_CATEGORIES.map((cat) => (
-            <button
+            <FilterChip
               key={cat}
               onClick={() => setCatFilter(catFilter === cat ? null : cat)}
-              className={cn(
-                "rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide transition-colors",
-                catFilter === cat
-                  ? "border-primary/60 bg-primary/15 text-primary"
-                  : "border-border text-muted-foreground hover:text-foreground",
-              )}
+              active={catFilter === cat}
+              className="text-[10px]"
             >
               {cat}
-            </button>
+            </FilterChip>
           ))}
-        </div>
-      </div>
+        </ControlToolbar>
+      </ControlToolbar>
 
       {TEMPLATE_CATEGORIES.map((cat) => {
         const items = grouped[cat];
@@ -183,7 +175,7 @@ function TemplateLibrary({
                   <Button
                     size="sm"
                     variant="secondary"
-                    className="mt-auto h-7 text-xs"
+                    className="mt-auto text-xs"
                     onClick={() => onUse(t)}
                   >
                     Use Template →
@@ -290,24 +282,24 @@ function RuleCard({
             <span className="text-[10px] opacity-70">{successRate}% success</span>
           )}
         </div>
-        <div className="flex gap-1.5">
-          <Button size="sm" variant="ghost" className="h-7 px-2.5 text-xs" onClick={onView}>
+        <ControlToolbar>
+          <Button size="sm" variant="ghost" className="text-xs" onClick={onView}>
             Details
           </Button>
-          <Button size="sm" variant="ghost" className="h-7 px-2.5 text-xs" onClick={onToggle}>
+          <Button size="sm" variant="ghost" className="text-xs" onClick={onToggle}>
             {isDisabled ? "Enable" : "Disable"}
           </Button>
           <Button
             size="sm"
             variant="secondary"
-            className="h-7 gap-1.5 px-2.5 text-xs"
+            className="text-xs"
             onClick={onRun}
             disabled={isRunning || runningId !== null}
           >
             <Play className={cn("size-3", isRunning && "animate-pulse")} />
             {isRunning ? "Running…" : "Run"}
           </Button>
-        </div>
+        </ControlToolbar>
       </div>
     </div>
   );
@@ -484,20 +476,17 @@ export function AutomationPanel({ channels = [] }: { channels?: NotificationChan
               Automation Rules
               <span className="text-xs font-normal text-muted-foreground">{rules.length} total</span>
             </CardTitle>
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search rules…"
-                  className="h-8 pl-8 text-xs max-w-52"
-                />
-              </div>
+            <ControlToolbar>
+              <SearchField
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search rules…"
+                className="max-w-52"
+              />
               <Button
                 variant="secondary"
                 size="sm"
-                className="h-8 gap-1.5 text-xs"
+                className="text-xs"
                 onClick={() => setView("templates")}
               >
                 <BookOpen className="size-3.5" />
@@ -505,28 +494,24 @@ export function AutomationPanel({ channels = [] }: { channels?: NotificationChan
               </Button>
               <Button
                 size="sm"
-                className="h-8 gap-1.5 text-xs"
+                className="text-xs"
                 onClick={() => openWizard()}
               >
                 <Plus className="size-3.5" />
                 New Rule
               </Button>
-            </div>
+            </ControlToolbar>
           </div>
 
           {/* Category filter chips */}
-          <div className="flex flex-wrap gap-1 pt-1">
-            <button
+          <ControlToolbar className="pt-1">
+            <FilterChip
               onClick={() => setCatFilter(null)}
-              className={cn(
-                "rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide transition-colors",
-                catFilter === null
-                  ? "border-primary/60 bg-primary/15 text-primary"
-                  : "border-border text-muted-foreground hover:text-foreground",
-              )}
+              active={catFilter === null}
+              className="text-[10px]"
             >
               All ({rules.length})
-            </button>
+            </FilterChip>
             {RULE_CATEGORIES.map((cat) => {
               const count = rules.filter((r) => r.category === cat).length;
               if (!count) return null;
@@ -536,7 +521,8 @@ export function AutomationPanel({ channels = [] }: { channels?: NotificationChan
                   key={cat}
                   onClick={() => setCatFilter(catFilter === cat ? null : cat)}
                   className={cn(
-                    "rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide transition-colors",
+                    "inline-flex h-9 items-center justify-center rounded-md border px-2.5 text-[10px] font-semibold uppercase leading-none outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25",
+                    catFilter !== cat && "border-border bg-muted/20 hover:bg-muted/40",
                   )}
                   style={
                     catFilter === cat
@@ -550,7 +536,7 @@ export function AutomationPanel({ channels = [] }: { channels?: NotificationChan
                 </button>
               );
             })}
-          </div>
+          </ControlToolbar>
         </CardHeader>
 
         <CardContent className="grid gap-3 lg:grid-cols-2">

@@ -3,9 +3,18 @@
 import { ShieldCheck, UserPlus, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
+import {
+  DashboardTable,
+  DashboardTableCell,
+  DashboardTableHeader,
+  DashboardTableRow,
+} from "@/components/dashboard/dashboard-table";
+import { InfoTile } from "@/components/dashboard/info-tile";
+import { StatusBadge } from "@/components/dashboard/resource-badges";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ControlToolbar, FilterChip } from "@/components/ui/controls";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
@@ -20,7 +29,6 @@ import type {
   InfrasightRole,
   ManagedUser,
   ManagedUserAuthType,
-  ManagedUserStatus,
   Organization,
 } from "@/types/infrasight";
 
@@ -183,7 +191,7 @@ export function UserManagement({ workspaceId }: { workspaceId: string }) {
             selected={form.workspaceIds}
             onChange={(workspaceIds) => setForm({ ...form, workspaceIds })}
           />
-          <div className="flex flex-wrap items-center gap-3">
+          <ControlToolbar className="gap-3">
             <Button size="sm" disabled={!canInvite || busy} onClick={inviteUser}>
               {busy ? "Inviting..." : "Invite User"}
             </Button>
@@ -192,7 +200,7 @@ export function UserManagement({ workspaceId }: { workspaceId: string }) {
                 {message.text}
               </span>
             )}
-          </div>
+          </ControlToolbar>
         </CardContent>
       </Card>
 
@@ -212,60 +220,51 @@ export function UserManagement({ workspaceId }: { workspaceId: string }) {
               No users have been invited to this workspace yet.
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[900px]">
-                <thead>
-                  <tr className="border-b border-border">
-                    {["User", "Role", "Workspace Access", "Auth", "Status", "Last Login", "Actions"].map((header) => (
-                      <th key={header} className="pb-2 pr-4 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                        {header}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
+            <DashboardTable minWidth="900px">
+                <DashboardTableHeader columns={["User", "Role", "Workspace Access", "Auth", "Status", "Last Login", "Actions"]} />
                 <tbody>
                   {users.map((user) => (
-                    <tr key={user.id} className="border-b border-border/50 last:border-0">
-                      <td className="py-3 pr-4">
+                    <DashboardTableRow key={user.id}>
+                      <DashboardTableCell>
                         <p className="text-sm font-semibold">{user.display_name || user.email}</p>
                         <p className="text-[11px] text-muted-foreground">{user.email}</p>
-                      </td>
-                      <td className="py-3 pr-4">
+                      </DashboardTableCell>
+                      <DashboardTableCell>
                         <Select
                           value={user.role}
                           disabled={pendingId === user.id || user.status === "disabled"}
                           onChange={(event) => patchUser(user, { role: event.target.value as InfrasightRole })}
-                          className="h-8 min-w-[120px] text-xs"
+                          className="min-w-[120px] text-xs"
                         >
                           <option value="admin">Admin</option>
                           <option value="operator">Operator</option>
                           <option value="viewer">Viewer</option>
                         </Select>
-                      </td>
-                      <td className="py-3 pr-4">
+                      </DashboardTableCell>
+                      <DashboardTableCell>
                         <WorkspacePicker
                           compact
                           options={workspaceOptions}
                           selected={user.workspace_ids}
                           onChange={(workspace_ids) => patchUser(user, { workspace_ids })}
                         />
-                      </td>
-                      <td className="py-3 pr-4">
+                      </DashboardTableCell>
+                      <DashboardTableCell>
                         <Badge className="text-[10px] normal-case">{user.auth_type.toUpperCase()}</Badge>
-                      </td>
-                      <td className="py-3 pr-4">
+                      </DashboardTableCell>
+                      <DashboardTableCell>
                         <StatusBadge status={user.status} />
-                      </td>
-                      <td className="py-3 pr-4 text-xs text-muted-foreground">
+                      </DashboardTableCell>
+                      <DashboardTableCell className="text-xs" muted>
                         {user.last_login_at ? new Date(user.last_login_at).toLocaleString() : "Never"}
-                      </td>
-                      <td className="py-3 pr-4">
-                        <div className="flex gap-2">
+                      </DashboardTableCell>
+                      <DashboardTableCell>
+                        <ControlToolbar>
                           {user.status === "disabled" ? (
                             <Button
                               size="sm"
                               variant="secondary"
-                              className="h-7 text-[11px]"
+                              className="text-[11px]"
                               disabled={pendingId === user.id}
                               onClick={() => patchUser(user, { status: "active" })}
                             >
@@ -275,20 +274,19 @@ export function UserManagement({ workspaceId }: { workspaceId: string }) {
                             <Button
                               size="sm"
                               variant="secondary"
-                              className="h-7 text-[11px]"
+                              className="text-[11px]"
                               disabled={pendingId === user.id}
                               onClick={() => disableUser(user)}
                             >
                               Disable
                             </Button>
                           )}
-                        </div>
-                      </td>
-                    </tr>
+                        </ControlToolbar>
+                      </DashboardTableCell>
+                    </DashboardTableRow>
                   ))}
                 </tbody>
-              </table>
-            </div>
+            </DashboardTable>
           )}
         </CardContent>
       </Card>
@@ -354,50 +352,30 @@ function WorkspacePicker({
           {label}
         </p>
       )}
-      <div className="flex flex-wrap gap-1.5">
+      <ControlToolbar>
         {options.map((workspace) => {
           const active = selected.includes(workspace.tenant_id);
           return (
-            <button
+            <FilterChip
               key={workspace.tenant_id}
-              type="button"
               onClick={() => toggle(workspace.tenant_id)}
-              className={cn(
-                "rounded-full border px-2 py-1 text-[11px] transition-colors",
-                active
-                  ? "border-primary/40 bg-primary/15 text-primary"
-                  : "border-border bg-muted/20 text-muted-foreground hover:text-foreground",
-              )}
+              active={active}
+              className="normal-case"
             >
               {workspace.name}
-            </button>
+            </FilterChip>
           );
         })}
-      </div>
+      </ControlToolbar>
     </div>
-  );
-}
-
-function StatusBadge({ status }: { status: ManagedUserStatus }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize",
-        status === "active" && "bg-primary/10 text-primary",
-        status === "invited" && "bg-warning/10 text-warning",
-        status === "disabled" && "bg-muted text-muted-foreground",
-      )}
-    >
-      {status}
-    </span>
   );
 }
 
 function ProvisioningNote({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-border bg-background/60 p-3">
+    <InfoTile>
       <p className="mb-1 text-xs font-semibold text-foreground">{title}</p>
       <p>{children}</p>
-    </div>
+    </InfoTile>
   );
 }

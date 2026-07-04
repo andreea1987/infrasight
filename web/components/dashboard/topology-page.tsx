@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ControlToolbar, FilterChip } from "@/components/ui/controls";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { SeverityBadge } from "@/components/dashboard/severity-badge";
 import { Select } from "@/components/ui/select";
@@ -1139,82 +1140,80 @@ export function TopologyPage({
           </CardTitle>
 
           {/* Toolbar */}
-          <div className="flex items-center gap-1">
+          <ControlToolbar>
             <Button
               variant="ghost"
-              size="sm"
-              className="h-7 w-7 p-0"
+              size="icon"
               onClick={() => setTransform((t) => ({ ...t, scale: Math.min(3, t.scale * 1.2) }))}
             >
               <ZoomIn className="size-3.5" />
             </Button>
             <Button
               variant="ghost"
-              size="sm"
-              className="h-7 w-7 p-0"
+              size="icon"
               onClick={() => setTransform((t) => ({ ...t, scale: Math.max(0.2, t.scale * 0.83) }))}
             >
               <ZoomOut className="size-3.5" />
             </Button>
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={resetView}>
+            <Button variant="ghost" size="icon" onClick={resetView}>
               <Maximize2 className="size-3.5" />
             </Button>
             {loading && <RefreshCw className="size-3.5 animate-spin text-muted-foreground" />}
-          </div>
+          </ControlToolbar>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex flex-wrap items-center gap-1.5">
+          <ControlToolbar>
+            <ControlToolbar>
               {categories.map((cat) => {
                 const { label, Icon } = CATEGORY_META[cat];
                 const count = categoryCounts[cat] ?? 0;
                 if (!count) return null;
                 return (
-                  <button
+                  <FilterChip
                     key={cat}
                     onClick={() => setCategoryFilter(categoryFilter === cat ? null : cat)}
-                    className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors ${
-                      categoryFilter === cat
-                        ? "border-primary/60 bg-primary/15 text-primary"
-                        : "border-border text-muted-foreground hover:border-border/80 hover:text-foreground"
-                    }`}
+                    active={categoryFilter === cat}
+                    className="text-[10px]"
                   >
                     <Icon className="size-3" />
                     {label}
                     <span className="opacity-60">{count}</span>
-                  </button>
+                  </FilterChip>
                 );
               })}
-            </div>
-            <Select className="h-8 w-[180px] text-xs" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
+            </ControlToolbar>
+            <Select className="w-[180px] text-xs" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
               {typeOptions.map((option) => (
                 <option key={option} value={option}>{option === "all" ? "All resource types" : titleCase(option)}</option>
               ))}
             </Select>
-            <Select className="h-8 w-[150px] text-xs" value={healthFilter} onChange={(event) => setHealthFilter(event.target.value)}>
+            <Select className="w-[150px] text-xs" value={healthFilter} onChange={(event) => setHealthFilter(event.target.value)}>
               {healthOptions.map((option) => (
                 <option key={option} value={option}>{option === "all" ? "All health" : option}</option>
               ))}
             </Select>
-            <Select className="h-8 w-[150px] text-xs" value={providerFilter} onChange={(event) => setProviderFilter(event.target.value)}>
+            <Select className="w-[150px] text-xs" value={providerFilter} onChange={(event) => setProviderFilter(event.target.value)}>
               {providerOptions.map((option) => (
                 <option key={option} value={option}>{option === "all" ? "All providers" : option}</option>
               ))}
             </Select>
             {(categoryFilter || typeFilter !== "all" || healthFilter !== "all" || providerFilter !== "all") && (
-              <button
-                className="rounded-md px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10"
+              <Button
+                className="text-xs"
                 onClick={() => {
                   setCategoryFilter(null);
                   setTypeFilter("all");
                   setHealthFilter("all");
                   setProviderFilter("all");
                 }}
+                size="sm"
+                type="button"
+                variant="ghost"
               >
                 Clear filters
-              </button>
+              </Button>
             )}
-          </div>
+          </ControlToolbar>
         </div>
       </CardHeader>
 

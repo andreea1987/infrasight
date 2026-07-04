@@ -45,6 +45,7 @@ async def sync_local_system(context: TenantContext = Depends(get_tenant_context)
             existing.name = discovered["name"]
             existing.region = discovered["region"]
             existing.status = discovered["status"]
+            existing.platform = discovered["metadata"].get("platform") or discovered["metadata"].get("os")
             existing.metadata_json = {
                 **discovered["metadata"],
                 "tenant_id": context.tenant_id,
@@ -58,6 +59,7 @@ async def sync_local_system(context: TenantContext = Depends(get_tenant_context)
                 provider=discovered["provider"],
                 resource_id=discovered["resource_id"],
                 resource_type=discovered["resource_type"],
+                platform=discovered["metadata"].get("platform") or discovered["metadata"].get("os"),
                 name=discovered["name"],
                 region=discovered["region"],
                 status=discovered["status"],

@@ -1,9 +1,11 @@
 "use client";
 
-import { Bot, CheckCircle2, KeyRound, Loader2, Server, XCircle } from "lucide-react";
+import { Bot, KeyRound, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { EmptyState } from "@/components/dashboard/empty-state";
+import { InfoTile } from "@/components/dashboard/info-tile";
+import { StatusBadge } from "@/components/dashboard/resource-badges";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -336,10 +338,10 @@ function ProviderDocumentation({ helper, providerType }: { helper: string; provi
       <CardContent className="grid gap-3 text-sm text-muted-foreground">
         <p>{helper}</p>
         {rows.map((row) => (
-          <div key={row.title} className="rounded-md border border-border bg-background/60 p-3">
+          <InfoTile key={row.title}>
             <p className="font-semibold text-foreground">{row.title}</p>
             <p className="mt-1">{row.detail}</p>
-          </div>
+          </InfoTile>
         ))}
         <div className="rounded-md border border-primary/25 bg-primary/10 p-3 text-primary">
           OpenClaw remains read-only. Providers receive only selected workspace tool context and cannot execute discovery, remediation, alert updates, or infrastructure changes.
@@ -347,16 +349,6 @@ function ProviderDocumentation({ helper, providerType }: { helper: string; provi
       </CardContent>
     </Card>
   );
-}
-
-function StatusBadge({ status }: { status: AiProviderConfig["status"] }) {
-  if (status === "Connected") {
-    return <Badge className="border-primary/30 text-primary"><CheckCircle2 className="mr-1 size-3" />Connected</Badge>;
-  }
-  if (status === "Failed") {
-    return <Badge className="border-destructive/30 text-destructive"><XCircle className="mr-1 size-3" />Failed</Badge>;
-  }
-  return <Badge><Server className="mr-1 size-3" />Not Configured</Badge>;
 }
 
 function emptyForm(workspaceId: string): ProviderForm {

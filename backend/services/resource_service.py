@@ -29,6 +29,7 @@ def sync_ec2_resources(tenant_id="internal", organization_id="internal"):
                 existing.name = instance["name"]
                 existing.region = instance["region"]
                 existing.status = instance["state"]
+                existing.platform = instance.get("platform") or instance.get("os")
                 existing.metadata_json = {
                     **instance,
                     "tenant_id": tenant_id,
@@ -43,6 +44,7 @@ def sync_ec2_resources(tenant_id="internal", organization_id="internal"):
                 provider="aws",
                 resource_id=instance["instance_id"],
                 resource_type="ec2",
+                platform=instance.get("platform") or instance.get("os"),
                 name=instance["name"],
                 region=instance.get("region", "unknown"),
                 status=instance["state"],

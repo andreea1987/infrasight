@@ -1,8 +1,8 @@
 # InfraSight
 
-AI-assisted infrastructure monitoring, observability, and incident management platform.
+Multi-tenant hybrid operations platform for infrastructure monitoring, observability, connector onboarding, and incident management.
 
-InfraSight provides a unified view of your infrastructure health across AWS, Azure, Linux/Windows servers, Docker containers, and Kubernetes clusters — with an AI operations assistant (OpenClaw), alert management, notification delivery, and an interactive dependency topology graph.
+InfraSight provides a unified workspace view across cloud, on-premises, container, and Kubernetes resources. It combines a central inventory catalogue, provider-aware infrastructure views, alert management, email notifications, a shared connector framework, topology, automation foundations, and the read-only OpenClaw operations assistant.
 
 ---
 
@@ -10,6 +10,8 @@ InfraSight provides a unified view of your infrastructure health across AWS, Azu
 
 | Document | Description |
 |---|---|
+| [Architecture](docs/architecture.md) | Modular application architecture, navigation model, platform responsibilities, and connector framework |
+| [Hybrid Operations Release Notes](docs/hybrid-operations-release-notes.md) | Current release summary, UI improvements, limitations, and next-release roadmap |
 | [User Guide](docs/user-guide.md) | How to use the application — dashboards, alerts, topology, automation, settings |
 | [Admin Guide](docs/admin-guide.md) | Deployment, environment configuration, connector setup, security hardening |
 | [Alert Knowledge Architecture](docs/alert-knowledge-architecture.md) | Alert lifecycle storage, incident knowledge, OpenClaw retrieval, and retention |
@@ -68,19 +70,21 @@ docker compose up -d
 
 | Feature | Status |
 |---|---|
-| Multi-workspace (multi-tenant) dashboard | Available |
+| Multi-organization / multi-workspace dashboard | Available |
 | Local email/password authentication | Available |
-| AWS EC2 / Azure VM discovery | Available |
-| Linux / Windows / Docker / Kubernetes discovery | Available |
+| Central inventory catalogue | Available |
+| Provider-aware infrastructure views for Servers, Databases, Containers, Kubernetes, and Topology | Available |
+| Connector framework for AWS, Azure, Windows/Linux Agent, Docker, and Kubernetes | Available with mocked backend workflows |
+| AWS, Azure, On-Prem, and VMware provider taxonomy | Available as resource attributes |
 | Alert management with severity levels | Available |
 | Alert history and incident knowledge base | Available |
-| Email / Slack / Teams notifications | Available |
+| Email notifications | Available |
 | SMTP configuration management | Available |
 | OpenClaw AI assistant (read-only) | Available (requires OpenAI API key) |
 | Interactive dependency topology graph | Available |
-| Automation rule templates (32 templates) | UI available; execution is demo |
-| User management and role-based access | Available |
-| SSO / SAML / OIDC | Configuration UI available; callback pending |
+| Automation rule templates and workflow foundation | UI available; execution is demo |
+| User management and basic role checks | Available; full RBAC planned |
+| SSO / SAML / OIDC | Planned / partial configuration only |
 
 See [Known Limitations](docs/known-limitations.md) for a full list of incomplete and planned features.
 
@@ -99,4 +103,4 @@ See [Known Limitations](docs/known-limitations.md) for a full list of incomplete
 
 ## Project Status
 
-Active development — Early Access.
+Active development — Hybrid Operations Early Access.

@@ -1,7 +1,18 @@
-import { Badge } from "@/components/ui/badge";
 import { SeverityBadge } from "@/components/dashboard/severity-badge";
+import {
+  DashboardTable,
+  DashboardTableCell,
+  DashboardTableHeader,
+  DashboardTableRow,
+} from "@/components/dashboard/dashboard-table";
+import { IconText, ProviderBadge, ResourceName } from "@/components/dashboard/resource-badges";
 import { Button } from "@/components/ui/button";
-import { TechnologyIcon } from "@/dashboard/resourceIcons";
+import {
+  platformLabel,
+  resourceType,
+  resourceTypeLabel,
+  resourcePlatform,
+} from "@/dashboard/resourceClassification";
 import type { Resource, ResourceMetadataValue } from "@/types/infrasight";
 
 export function ResourceTable({
@@ -12,75 +23,66 @@ export function ResourceTable({
   resources: Resource[];
 }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[980px] border-collapse text-left text-sm">
-        <thead>
-          <tr className="border-b border-border text-xs uppercase tracking-[0.16em] text-muted-foreground">
-            <th className="px-3 py-3">Name</th>
-            <th className="px-3 py-3">Provider</th>
-            <th className="px-3 py-3">Type</th>
-            <th className="px-3 py-3">Status</th>
-            <th className="px-3 py-3">Health</th>
-            <th className="px-3 py-3">Score</th>
-            <th className="px-3 py-3">Region</th>
-            <th className="px-3 py-3">Private IP</th>
-            <th className="px-3 py-3">CPU</th>
-            <th className="px-3 py-3">Memory</th>
-            <th className="px-3 py-3" aria-label="Resource actions" />
-          </tr>
-        </thead>
+    <DashboardTable minWidth="1120px">
+        <DashboardTableHeader columns={[
+          "Name",
+          "Provider",
+          "Resource Type",
+          "Platform",
+          "Status",
+          "Health",
+          "Score",
+          "Region",
+          "Private IP",
+          "CPU",
+          "Memory",
+          { ariaLabel: "Resource actions" },
+        ]} />
         <tbody>
           {resources.map((resource) => (
-            <tr className="border-b border-border/70" key={resource.id}>
-              <td className="px-3 py-3 font-medium">
-                <span className="flex items-center gap-2">
-                  <TechnologyIcon name={resource.resource_type || resource.provider} surface="table" />
-                  {resource.name}
-                </span>
-              </td>
-              <td className="px-3 py-3">
-                <Badge className="inline-flex items-center gap-1.5">
-                  <TechnologyIcon name={resource.provider} surface="table" />
-                  {resource.provider}
-                </Badge>
-              </td>
-              <td className="px-3 py-3 text-muted-foreground">
-                <span className="flex items-center gap-2">
-                  <TechnologyIcon name={resource.resource_type} surface="table" />
-                  {resource.resource_type}
-                </span>
-              </td>
-              <td className="px-3 py-3">
+            <DashboardTableRow key={resource.id}>
+              <DashboardTableCell className="font-medium">
+                <ResourceName resource={resource} />
+              </DashboardTableCell>
+              <DashboardTableCell>
+                <ProviderBadge resource={resource} />
+              </DashboardTableCell>
+              <DashboardTableCell muted>
+                <IconText iconName={resourceType(resource)} label={resourceTypeLabel(resource)} />
+              </DashboardTableCell>
+              <DashboardTableCell muted>
+                <IconText iconName={resourcePlatform(resource)} label={platformLabel(resource)} />
+              </DashboardTableCell>
+              <DashboardTableCell>
                 <SeverityBadge severity={resource.status} />
-              </td>
-              <td className="px-3 py-3">
+              </DashboardTableCell>
+              <DashboardTableCell>
                 <SeverityBadge severity={resource.health_status ?? "Unknown"} />
-              </td>
-              <td className="px-3 py-3 font-medium">
+              </DashboardTableCell>
+              <DashboardTableCell className="font-medium">
                 {resource.health_score ?? "n/a"}
-              </td>
-              <td className="px-3 py-3 text-muted-foreground">{resource.region}</td>
-              <td className="px-3 py-3 text-muted-foreground">
+              </DashboardTableCell>
+              <DashboardTableCell muted>{resource.region}</DashboardTableCell>
+              <DashboardTableCell muted>
                 {resource.private_ip ?? "n/a"}
-              </td>
-              <td className="px-3 py-3 text-muted-foreground">
+              </DashboardTableCell>
+              <DashboardTableCell muted>
                 {formatMetadataValue(resource.metadata?.cpu_count ?? resource.metadata?.cpu_percent)}
-              </td>
-              <td className="px-3 py-3 text-muted-foreground">
+              </DashboardTableCell>
+              <DashboardTableCell muted>
                 {formatMetadataValue(resource.metadata?.memory_gb, " GB")}
-              </td>
-              <td className="px-3 py-3 text-right">
+              </DashboardTableCell>
+              <DashboardTableCell align="right">
                 {onSelectResource && (
                   <Button size="sm" variant="secondary" onClick={() => onSelectResource(resource)}>
                     Details
                   </Button>
                 )}
-              </td>
-            </tr>
+              </DashboardTableCell>
+            </DashboardTableRow>
           ))}
         </tbody>
-      </table>
-    </div>
+    </DashboardTable>
   );
 }
 

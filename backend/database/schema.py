@@ -54,6 +54,8 @@ ADDITIVE_COLUMNS = [
     ("notification_channels", "last_test_error",   "TEXT"),
     # Delivery response-time tracking
     ("alert_deliveries",      "response_time_ms",  "INTEGER"),
+    # Independent resource classification dimensions.
+    ("resources", "platform", "VARCHAR"),
 ]
 
 # Columns that need their NOT NULL constraint removed.

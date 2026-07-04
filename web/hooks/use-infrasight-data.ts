@@ -36,7 +36,7 @@ import type {
  * - The API client must receive setActiveOrganization before every request so
  *   fast workspace switches do not leak reads or writes across workspaces.
  */
-export function useInfraSightData(organizationId = "internal") {
+export function useInfraSightData(workspaceId = "internal", organizationId = workspaceId) {
   const [resources, setResources] = useState<Resource[]>(
     enrichResourcesWithHealth(mockResources, mockAlerts),
   );
@@ -50,7 +50,7 @@ export function useInfraSightData(organizationId = "internal") {
   const [lastEvent, setLastEvent] = useState("booting console");
 
   const loadAll = useCallback(async () => {
-    setActiveOrganization(organizationId);
+    setActiveOrganization(workspaceId, organizationId);
     const snapshot = await fetchInfraSightSnapshot();
     const nextResources = snapshot.resources.length ? snapshot.resources : mockResources;
     const nextAlerts = snapshot.alerts.length ? snapshot.alerts : mockAlerts;
@@ -61,12 +61,12 @@ export function useInfraSightData(organizationId = "internal") {
     setMetrics(snapshot.metrics);
     setChannels(snapshot.channels);
     setDeliveries(snapshot.deliveries);
-  }, [organizationId]);
+  }, [organizationId, workspaceId]);
 
   useEffect(() => {
     let mounted = true;
 
-    setActiveOrganization(organizationId);
+    setActiveOrganization(workspaceId, organizationId);
     fetchInfraSightSnapshot()
       .then((snapshot) => {
         if (!mounted) return;
@@ -84,10 +84,10 @@ export function useInfraSightData(organizationId = "internal") {
     return () => {
       mounted = false;
     };
-  }, [loadAll, organizationId]);
+  }, [loadAll, organizationId, workspaceId]);
 
   useEffect(() => {
-    const params = new URLSearchParams({ tenant: organizationId, organization: organizationId });
+    const params = new URLSearchParams({ tenant: workspaceId, organization: organizationId });
     const socket = new WebSocket(`${WS_URL}/ws/events?${params.toString()}`);
 
     socket.onopen = () => {
@@ -109,12 +109,12 @@ export function useInfraSightData(organizationId = "internal") {
     socket.onclose = () => setRealtime("disconnected");
 
     return () => socket.close();
-  }, [loadAll, organizationId]);
+  }, [loadAll, organizationId, workspaceId]);
 
   const runAction = async (path: string) => {
     setBusy(true);
     try {
-      setActiveOrganization(organizationId);
+      setActiveOrganization(workspaceId, organizationId);
       await runBackendAction(path);
       await loadAll();
     } finally {
@@ -123,7 +123,7 @@ export function useInfraSightData(organizationId = "internal") {
   };
 
   const addChannel = async (channel: ChannelForm) => {
-    setActiveOrganization(organizationId);
+    setActiveOrganization(workspaceId, organizationId);
     await createNotificationChannel(channel);
     await loadAll();
   };
@@ -132,7 +132,7 @@ export function useInfraSightData(organizationId = "internal") {
     channel: NotificationChannel,
     action: "test" | "enable" | "disable" | "delete",
   ) => {
-    setActiveOrganization(organizationId);
+    setActiveOrganization(workspaceId, organizationId);
     let result: Awaited<ReturnType<typeof notificationChannelAction>> | undefined;
     if (action === "delete") {
       await deleteNotificationChannel(channel.id);

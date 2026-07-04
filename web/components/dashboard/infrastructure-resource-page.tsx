@@ -1,15 +1,41 @@
-import { useMemo, useState, type ReactNode } from "react";
-import { Loader2, RefreshCw, Search } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Loader2, RefreshCw } from "lucide-react";
 
+import {
+  DashboardTable,
+  DashboardTableCell,
+  DashboardTableHeader,
+  DashboardTableRow,
+} from "@/components/dashboard/dashboard-table";
 import { EmptyState } from "@/components/dashboard/empty-state";
+import { IconText, ProviderBadge, ResourceName } from "@/components/dashboard/resource-badges";
 import { SeverityBadge } from "@/components/dashboard/severity-badge";
 import { ActionBanner, type ActionResult } from "@/components/ui/action-banner";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { ControlToolbar, FilterGrid, SearchField } from "@/components/ui/controls";
 import { Select } from "@/components/ui/select";
 import { getAlertsForResource } from "@/dashboard/health";
+import {
+  HEALTH_OPTIONS,
+  OPERATING_SYSTEM_OPTIONS,
+  PLATFORM_OPTIONS,
+  PROVIDER_OPTIONS,
+  RESOURCE_TYPE_OPTIONS,
+  STATUS_OPTIONS,
+  healthLabel,
+  labelFor,
+  operatingSystemLabel,
+  providerConfig,
+  resourceHealth,
+  resourceOperatingSystem,
+  resourcePlatform,
+  resourceProvider,
+  resourceStatus,
+  resourceType,
+  resourceTypeLabel,
+  supportedProviderValues,
+} from "@/dashboard/resourceClassification";
 import { TechnologyIcon } from "@/dashboard/resourceIcons";
 import type { AlertRecord, MetricSample, Resource } from "@/types/infrasight";
 
@@ -41,12 +67,24 @@ export function InfrastructureResourcePage({
 }) {
   const [query, setQuery] = useState("");
   const [provider, setProvider] = useState("all");
+  const [resourceTypeFilter, setResourceTypeFilter] = useState("all");
+  const [platform, setPlatform] = useState("all");
   const [status, setStatus] = useState("all");
   const [health, setHealth] = useState("all");
   const [os, setOs] = useState("all");
   // runningLabel: which discovery button is currently in flight
   const [runningLabel, setRunningLabel] = useState<string | null>(null);
   const [actionResult, setActionResult] = useState<ActionResult | null>(null);
+  const providerOptions = useMemo(() => ["all", ...supportedProviderValues()], []);
+  const providerCounts = useMemo(
+    () => countValues(resources.map(resourceProvider)),
+    [resources],
+  );
+  const selectedProvider = providerConfig(provider);
+  const providerEmptyState =
+    provider !== "all" && (providerCounts[provider] ?? 0) === 0 && selectedProvider
+      ? selectedProvider
+      : null;
 
   // Filtering stays client-side over the already-loaded inventory snapshot so
   // these infrastructure pages remain read-only and do not alter discovery data.
@@ -59,13 +97,15 @@ export function InfrastructureResourcePage({
         [resource.name, resource.resource_type, resource.region]
           .filter(Boolean)
           .some((value) => value.toLowerCase().includes(lowerQuery));
-      const matchesProvider = provider === "all" || resource.provider === provider;
-      const matchesStatus = status === "all" || resource.status === status;
-      const matchesHealth = health === "all" || resource.health_status === health;
-      const matchesOs = kind !== "servers" || os === "all" || getServerOs(resource) === os;
-      return matchesQuery && matchesProvider && matchesStatus && matchesHealth && matchesOs;
+      const matchesProvider = provider === "all" || resourceProvider(resource) === provider;
+      const matchesResourceType = resourceTypeFilter === "all" || resourceType(resource) === resourceTypeFilter;
+      const matchesPlatform = platform === "all" || resourcePlatform(resource) === platform;
+      const matchesStatus = status === "all" || resourceStatus(resource) === status;
+      const matchesHealth = health === "all" || resourceHealth(resource) === health;
+      const matchesOs = kind !== "servers" || os === "all" || resourceOperatingSystem(resource) === os;
+      return matchesQuery && matchesProvider && matchesResourceType && matchesPlatform && matchesStatus && matchesHealth && matchesOs;
     });
-  }, [health, kind, os, provider, query, resources, status]);
+  }, [health, kind, os, platform, provider, query, resourceTypeFilter, resources, status]);
 
   // Discovery buttons live on the relevant infrastructure page now. Sync
   // endpoints keep their existing behavior, while typed discovery calls use the
@@ -98,7 +138,7 @@ export function InfrastructureResourcePage({
                 Discovery actions are read-only inventory collection triggers for this infrastructure type.
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <ControlToolbar>
               {discoveryActions.map((action) => (
                 <Button
                   disabled={busy || runningLabel !== null}
@@ -115,7 +155,7 @@ export function InfrastructureResourcePage({
                   {action.label}
                 </Button>
               ))}
-            </div>
+            </ControlToolbar>
           </div>
           {actionResult && (
             <ActionBanner result={actionResult} onDismiss={() => setActionResult(null)} />
@@ -123,9 +163,9 @@ export function InfrastructureResourcePage({
         </CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {summaryCard("Total", resources.length, kind)}
-          {summaryCard("Healthy", resources.filter((r) => r.health_status === "Healthy").length, "health")}
-          {summaryCard("Warning", resources.filter((r) => r.health_status === "Warning").length, "alert")}
-          {summaryCard("Critical", resources.filter((r) => r.health_status === "Critical").length, "alert")}
+          {summaryCard("Healthy", resources.filter((resource) => resourceHealth(resource) === "healthy").length, "health")}
+          {summaryCard("Warning", resources.filter((resource) => resourceHealth(resource) === "warning").length, "alert")}
+          {summaryCard("Critical", resources.filter((resource) => resourceHealth(resource) === "critical").length, "alert")}
         </CardContent>
       </Card>
 
@@ -139,6 +179,8 @@ export function InfrastructureResourcePage({
               onClick={() => {
                 setQuery("");
                 setProvider("all");
+                setResourceTypeFilter("all");
+                setPlatform("all");
                 setStatus("all");
                 setHealth("all");
                 setOs("all");
@@ -147,34 +189,41 @@ export function InfrastructureResourcePage({
               Clear Filters
             </Button>
           </div>
-          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-5">
-            <div className="relative">
-              <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
-              <Input className="pl-9" placeholder={`Search ${title.toLowerCase()}`} value={query} onChange={(event) => setQuery(event.target.value)} />
-            </div>
+          <FilterGrid>
+            <SearchField placeholder={`Search ${title.toLowerCase()}`} value={query} onChange={(event) => setQuery(event.target.value)} />
             <Select value={provider} onChange={(event) => setProvider(event.target.value)}>
-              {["all", ...unique(resources.map((resource) => resource.provider))].map((item) => (
-                <option key={item} value={item}>{item === "all" ? "All providers" : item}</option>
+              {providerOptions.map((item) => (
+                <option key={item} value={item}>{providerFilterLabel(item, providerCounts)}</option>
+              ))}
+            </Select>
+            <Select value={resourceTypeFilter} onChange={(event) => setResourceTypeFilter(event.target.value)}>
+              {["all", ...optionValues(RESOURCE_TYPE_OPTIONS)].map((item) => (
+                <option key={item} value={item}>{item === "all" ? "All resource types" : labelFor(item, RESOURCE_TYPE_OPTIONS)}</option>
+              ))}
+            </Select>
+            <Select value={platform} onChange={(event) => setPlatform(event.target.value)}>
+              {["all", ...optionValues(PLATFORM_OPTIONS)].map((item) => (
+                <option key={item} value={item}>{item === "all" ? "All platforms" : labelFor(item, PLATFORM_OPTIONS)}</option>
               ))}
             </Select>
             <Select value={status} onChange={(event) => setStatus(event.target.value)}>
-              {["all", ...unique(resources.map((resource) => resource.status))].map((item) => (
-                <option key={item} value={item}>{item === "all" ? "All statuses" : item}</option>
+              {["all", ...optionValues(STATUS_OPTIONS)].map((item) => (
+                <option key={item} value={item}>{item === "all" ? "All statuses" : labelFor(item, STATUS_OPTIONS)}</option>
               ))}
             </Select>
             <Select value={health} onChange={(event) => setHealth(event.target.value)}>
-              {["all", "Healthy", "Warning", "Critical"].map((item) => (
-                <option key={item} value={item}>{item === "all" ? "All health" : item}</option>
+              {["all", ...optionValues(HEALTH_OPTIONS)].map((item) => (
+                <option key={item} value={item}>{item === "all" ? "All health" : labelFor(item, HEALTH_OPTIONS)}</option>
               ))}
             </Select>
             {kind === "servers" && (
               <Select value={os} onChange={(event) => setOs(event.target.value)}>
-                {["all", ...unique(resources.map(getServerOs))].map((item) => (
-                  <option key={item} value={item}>{item === "all" ? "All OS" : item}</option>
+                {["all", ...optionValues(OPERATING_SYSTEM_OPTIONS)].map((item) => (
+                  <option key={item} value={item}>{item === "all" ? "All OS" : labelFor(item, OPERATING_SYSTEM_OPTIONS)}</option>
                 ))}
               </Select>
             )}
-          </div>
+          </FilterGrid>
         </CardHeader>
         <CardContent>
           {filteredResources.length ? (
@@ -186,7 +235,18 @@ export function InfrastructureResourcePage({
               <KubernetesTable alerts={alerts} metrics={metrics} onSelectResource={onSelectResource} resources={filteredResources} />
             )
           ) : (
-            <EmptyState text={`No ${title.toLowerCase()} match the current filters.`} />
+            <div className="space-y-3">
+              <EmptyState text={providerEmptyState ? providerEmptyState.emptyState : `No ${title.toLowerCase()} match the current filters.`} />
+              {providerEmptyState && (
+                <Button
+                  disabled={busy || runningLabel !== null || providerEmptyState.comingSoon || !providerEmptyState.actionPath}
+                  onClick={() => void runDiscoveryAction({ label: providerEmptyState.actionLabel, path: providerEmptyState.actionPath })}
+                  type="button"
+                >
+                  {providerEmptyState.actionLabel}
+                </Button>
+              )}
+            </div>
           )}
         </CardContent>
       </Card>
@@ -196,83 +256,77 @@ export function InfrastructureResourcePage({
 
 function ServerTable({ alerts, metrics, onSelectResource, resources }: ResourceTableProps) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[1180px] border-collapse text-left text-sm">
-        <thead>{header(["Server", "OS", "Provider", "Status", "Health", "CPU", "Memory", "Disk", "Services", "Logs", "Alerts", "Last Checked", ""])}</thead>
+    <DashboardTable minWidth="1180px">
+        <DashboardTableHeader columns={["Server", "OS", "Provider", "Status", "Health", "CPU", "Memory", "Disk", "Services", "Logs", "Alerts", "Last Checked", { ariaLabel: "Server actions" }]} />
         <tbody>
           {resources.map((resource) => (
-            <ClickableRow key={resource.id} onClick={() => onSelectResource(resource)}>
-              <td className="px-3 py-3 font-medium"><ResourceName resource={resource} /></td>
-              <td className="px-3 py-3 text-muted-foreground"><IconText iconName={getServerOs(resource)} label={getServerOs(resource)} /></td>
-              <td className="px-3 py-3"><ProviderBadge provider={resource.provider} /></td>
-              <td className="px-3 py-3"><SeverityBadge severity={resource.status} /></td>
-              <td className="px-3 py-3"><SeverityBadge severity={resource.health_status ?? "Unknown"} /></td>
-              <td className="px-3 py-3 text-muted-foreground">{metadataValue(resource, ["cpu_percent", "cpu_count"])}</td>
-              <td className="px-3 py-3 text-muted-foreground">{metadataValue(resource, ["memory_percent", "memory_gb"])}</td>
-              <td className="px-3 py-3 text-muted-foreground">{metadataValue(resource, ["disk_used_percent", "disk_percent"])}</td>
-              <td className="px-3 py-3 text-muted-foreground">{metadataValue(resource, ["services", "service_count"])}</td>
-              <td className="px-3 py-3 text-muted-foreground">{metadataValue(resource, ["logs", "log_count"])}</td>
-              <td className="px-3 py-3 text-muted-foreground">{openAlertCount(resource, alerts)}</td>
-              <td className="px-3 py-3 text-muted-foreground">{lastChecked(resource, metrics)}</td>
+            <DashboardTableRow key={resource.id} onClick={() => onSelectResource(resource)}>
+              <DashboardTableCell className="font-medium"><ResourceName resource={resource} /></DashboardTableCell>
+              <DashboardTableCell muted><IconText iconName={resourceOperatingSystem(resource)} label={operatingSystemLabel(resource)} /></DashboardTableCell>
+              <DashboardTableCell><ProviderBadge resource={resource} /></DashboardTableCell>
+              <DashboardTableCell><SeverityBadge severity={labelFor(resourceStatus(resource), STATUS_OPTIONS)} /></DashboardTableCell>
+              <DashboardTableCell><SeverityBadge severity={healthLabel(resource)} /></DashboardTableCell>
+              <DashboardTableCell muted>{metadataValue(resource, ["cpu_percent", "cpu_count"])}</DashboardTableCell>
+              <DashboardTableCell muted>{metadataValue(resource, ["memory_percent", "memory_gb"])}</DashboardTableCell>
+              <DashboardTableCell muted>{metadataValue(resource, ["disk_used_percent", "disk_percent"])}</DashboardTableCell>
+              <DashboardTableCell muted>{metadataValue(resource, ["services", "service_count"])}</DashboardTableCell>
+              <DashboardTableCell muted>{metadataValue(resource, ["logs", "log_count"])}</DashboardTableCell>
+              <DashboardTableCell muted>{openAlertCount(resource, alerts)}</DashboardTableCell>
+              <DashboardTableCell muted>{lastChecked(resource, metrics)}</DashboardTableCell>
               <DetailsCell resource={resource} onSelectResource={onSelectResource} />
-            </ClickableRow>
+            </DashboardTableRow>
           ))}
         </tbody>
-      </table>
-    </div>
+    </DashboardTable>
   );
 }
 
 function ContainerTable({ alerts, metrics, onSelectResource, resources }: ResourceTableProps) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[1080px] border-collapse text-left text-sm">
-        <thead>{header(["Container", "Image", "Host", "Status", "Health", "CPU", "Memory", "Restarts", "Alerts", "Last Checked", ""])}</thead>
+    <DashboardTable minWidth="1080px">
+        <DashboardTableHeader columns={["Container", "Image", "Host", "Status", "Health", "CPU", "Memory", "Restarts", "Alerts", "Last Checked", { ariaLabel: "Container actions" }]} />
         <tbody>
           {resources.map((resource) => (
-            <ClickableRow key={resource.id} onClick={() => onSelectResource(resource)}>
-              <td className="px-3 py-3 font-medium"><ResourceName resource={resource} iconName="docker" /></td>
-              <td className="px-3 py-3 text-muted-foreground">{metadataValue(resource, ["image", "container_image"])}</td>
-              <td className="px-3 py-3 text-muted-foreground">{metadataValue(resource, ["host", "hostname", "node"])}</td>
-              <td className="px-3 py-3"><SeverityBadge severity={resource.status} /></td>
-              <td className="px-3 py-3"><SeverityBadge severity={resource.health_status ?? "Unknown"} /></td>
-              <td className="px-3 py-3 text-muted-foreground">{metadataValue(resource, ["cpu_percent"])}</td>
-              <td className="px-3 py-3 text-muted-foreground">{metadataValue(resource, ["memory_percent", "memory_usage"])}</td>
-              <td className="px-3 py-3 text-muted-foreground">{metadataValue(resource, ["restart_count", "restarts"])}</td>
-              <td className="px-3 py-3 text-muted-foreground">{openAlertCount(resource, alerts)}</td>
-              <td className="px-3 py-3 text-muted-foreground">{lastChecked(resource, metrics)}</td>
+            <DashboardTableRow key={resource.id} onClick={() => onSelectResource(resource)}>
+              <DashboardTableCell className="font-medium"><ResourceName resource={resource} /></DashboardTableCell>
+              <DashboardTableCell muted>{metadataValue(resource, ["image", "container_image"])}</DashboardTableCell>
+              <DashboardTableCell muted>{metadataValue(resource, ["host", "hostname", "node"])}</DashboardTableCell>
+              <DashboardTableCell><SeverityBadge severity={labelFor(resourceStatus(resource), STATUS_OPTIONS)} /></DashboardTableCell>
+              <DashboardTableCell><SeverityBadge severity={healthLabel(resource)} /></DashboardTableCell>
+              <DashboardTableCell muted>{metadataValue(resource, ["cpu_percent"])}</DashboardTableCell>
+              <DashboardTableCell muted>{metadataValue(resource, ["memory_percent", "memory_usage"])}</DashboardTableCell>
+              <DashboardTableCell muted>{metadataValue(resource, ["restart_count", "restarts"])}</DashboardTableCell>
+              <DashboardTableCell muted>{openAlertCount(resource, alerts)}</DashboardTableCell>
+              <DashboardTableCell muted>{lastChecked(resource, metrics)}</DashboardTableCell>
               <DetailsCell resource={resource} onSelectResource={onSelectResource} />
-            </ClickableRow>
+            </DashboardTableRow>
           ))}
         </tbody>
-      </table>
-    </div>
+    </DashboardTable>
   );
 }
 
 function KubernetesTable({ alerts, metrics, onSelectResource, resources }: ResourceTableProps) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[1180px] border-collapse text-left text-sm">
-        <thead>{header(["Resource", "Kind", "Cluster", "Namespace", "Status", "Health", "Restarts", "Alerts", "Last Checked", ""])}</thead>
+    <DashboardTable minWidth="1180px">
+        <DashboardTableHeader columns={["Resource", "Kind", "Cluster", "Namespace", "Status", "Health", "Restarts", "Alerts", "Last Checked", { ariaLabel: "Kubernetes actions" }]} />
         <tbody>
           {resources.map((resource) => (
-            <ClickableRow key={resource.id} onClick={() => onSelectResource(resource)}>
-              <td className="px-3 py-3 font-medium"><ResourceName resource={resource} iconName="kubernetes" /></td>
-              <td className="px-3 py-3 text-muted-foreground"><IconText iconName={resource.resource_type} label={resource.resource_type} /></td>
-              <td className="px-3 py-3 text-muted-foreground">{metadataValue(resource, ["cluster", "cluster_name"])}</td>
-              <td className="px-3 py-3 text-muted-foreground">{metadataValue(resource, ["namespace"])}</td>
-              <td className="px-3 py-3"><SeverityBadge severity={resource.status} /></td>
-              <td className="px-3 py-3"><SeverityBadge severity={resource.health_status ?? "Unknown"} /></td>
-              <td className="px-3 py-3 text-muted-foreground">{metadataValue(resource, ["restart_count", "restarts"])}</td>
-              <td className="px-3 py-3 text-muted-foreground">{openAlertCount(resource, alerts)}</td>
-              <td className="px-3 py-3 text-muted-foreground">{lastChecked(resource, metrics)}</td>
+            <DashboardTableRow key={resource.id} onClick={() => onSelectResource(resource)}>
+              <DashboardTableCell className="font-medium"><ResourceName resource={resource} /></DashboardTableCell>
+              <DashboardTableCell muted><IconText iconName={resourceType(resource)} label={resourceTypeLabel(resource)} /></DashboardTableCell>
+              <DashboardTableCell muted>{metadataValue(resource, ["cluster", "cluster_name"])}</DashboardTableCell>
+              <DashboardTableCell muted>{metadataValue(resource, ["namespace"])}</DashboardTableCell>
+              <DashboardTableCell><SeverityBadge severity={labelFor(resourceStatus(resource), STATUS_OPTIONS)} /></DashboardTableCell>
+              <DashboardTableCell><SeverityBadge severity={healthLabel(resource)} /></DashboardTableCell>
+              <DashboardTableCell muted>{metadataValue(resource, ["restart_count", "restarts"])}</DashboardTableCell>
+              <DashboardTableCell muted>{openAlertCount(resource, alerts)}</DashboardTableCell>
+              <DashboardTableCell muted>{lastChecked(resource, metrics)}</DashboardTableCell>
               <DetailsCell resource={resource} onSelectResource={onSelectResource} />
-            </ClickableRow>
+            </DashboardTableRow>
           ))}
         </tbody>
-      </table>
-    </div>
+    </DashboardTable>
   );
 }
 
@@ -283,17 +337,9 @@ type ResourceTableProps = {
   resources: Resource[];
 };
 
-function ClickableRow({ children, onClick }: { children: ReactNode; onClick: () => void }) {
-  return (
-    <tr className="cursor-pointer border-b border-border/70 transition-colors hover:bg-muted/30" onClick={onClick}>
-      {children}
-    </tr>
-  );
-}
-
 function DetailsCell({ onSelectResource, resource }: { onSelectResource: (resource: Resource) => void; resource: Resource }) {
   return (
-    <td className="px-3 py-3 text-right">
+    <DashboardTableCell align="right">
       <Button
         size="sm"
         variant="secondary"
@@ -304,15 +350,7 @@ function DetailsCell({ onSelectResource, resource }: { onSelectResource: (resour
       >
         Details
       </Button>
-    </td>
-  );
-}
-
-function header(labels: string[]) {
-  return (
-    <tr className="border-b border-border text-xs uppercase tracking-[0.16em] text-muted-foreground">
-      {labels.map((label) => <th className="px-3 py-3" key={label}>{label}</th>)}
-    </tr>
+    </DashboardTableCell>
   );
 }
 
@@ -324,40 +362,6 @@ function summaryCard(label: string, value: number, iconName: string) {
       <div className="mt-1 text-2xl font-semibold">{value}</div>
     </div>
   );
-}
-
-function ResourceName({ iconName, resource }: { iconName?: string; resource: Resource }) {
-  return (
-    <span className="flex items-center gap-2">
-      <TechnologyIcon name={iconName ?? resource.resource_type ?? resource.provider} surface="table" />
-      {resource.name}
-    </span>
-  );
-}
-
-function ProviderBadge({ provider }: { provider: string }) {
-  return (
-    <Badge className="inline-flex items-center gap-1.5">
-      <TechnologyIcon name={provider} surface="table" />
-      {provider}
-    </Badge>
-  );
-}
-
-function IconText({ iconName, label }: { iconName: string; label: string }) {
-  return (
-    <span className="flex items-center gap-2">
-      <TechnologyIcon name={iconName} surface="table" />
-      {label}
-    </span>
-  );
-}
-
-function getServerOs(resource: Resource) {
-  const text = `${resource.resource_type} ${resource.provider} ${String(resource.metadata?.os ?? resource.metadata?.platform ?? "")}`.toLowerCase();
-  if (text.includes("windows") || text.includes("winrm")) return "windows";
-  if (text.includes("linux") || text.includes("ec2") || text.includes("local_host")) return "linux";
-  return "unknown";
 }
 
 function metadataValue(resource: Resource, keys: string[]) {
@@ -388,6 +392,21 @@ function formatDate(value: string) {
   return date.toLocaleString(undefined, { day: "2-digit", hour: "2-digit", minute: "2-digit", month: "short" });
 }
 
-function unique(items: string[]) {
-  return [...new Set(items.filter(Boolean))].sort();
+function countValues(values: string[]) {
+  return values.reduce<Record<string, number>>((counts, value) => {
+    if (value) counts[value] = (counts[value] ?? 0) + 1;
+    return counts;
+  }, {});
+}
+
+function providerFilterLabel(item: string, providerCounts: Record<string, number>) {
+  if (item === "all") return "All providers";
+  const provider = providerConfig(item);
+  const label = provider?.label ?? labelFor(item, PROVIDER_OPTIONS);
+  if (provider?.comingSoon) return `${label} (Coming Soon)`;
+  return `${label} (${providerCounts[item] ?? 0})`;
+}
+
+function optionValues(options: readonly { value: string }[]) {
+  return options.map((option) => option.value);
 }

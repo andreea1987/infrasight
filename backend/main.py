@@ -14,7 +14,7 @@ from backend.models.resource import Resource
 from backend.models.metric import MetricSample
 from backend.models.alert import Alert, AlertHistory, IncidentKnowledge, OpenClawResolutionLibrary
 from backend.models.ai_provider import OpenClawAiProvider
-from backend.models.connector import ConnectorRegistration
+from backend.models.connector import Connector, ConnectorCredential, ConnectorRegistration, ConnectorSync, DiscoveredResource
 from backend.models.discovery import (
     DiscoveryRun,
     MonitoringProfileAssignment,
@@ -23,7 +23,7 @@ from backend.models.discovery import (
 )
 from backend.models.notification import AlertDelivery, NotificationChannel, SmtpConfig
 from backend.models.openclaw import OpenClawAuditLog
-from backend.models.organization import IntegrationSecret, Organization, OrganizationMembership, SsoProviderConfig
+from backend.models.organization import IntegrationSecret, Organization, OrganizationMembership, SsoProviderConfig, Workspace
 from backend.models.telemetry import LogEntry, SyncRun
 
 # API routers — each router owns a URL prefix and a logical domain

@@ -1,7 +1,7 @@
 # InfraSight Administrator Guide
 
 > **Intended audience:** System administrators responsible for deploying, configuring, and maintaining InfraSight.  
-> **Last updated:** June 2026
+> **Last updated:** July 2026
 
 ---
 
@@ -34,7 +34,7 @@
 | **Backend** | Python 3.12+, FastAPI |
 | **Frontend** | Node.js 20+, Next.js 15 |
 | **Database** | PostgreSQL 14+ (SQLite supported for development only) |
-| **Network** | Backend must reach configured cloud APIs (AWS, Azure) and SMTP server |
+| **Network** | Backend must reach the SMTP server for email notifications. Cloud connector lifecycle workflows are mocked in the current release. |
 | **OpenClaw** | Optional: OpenAI API key for AI assistant functionality |
 
 ---
@@ -180,7 +180,7 @@ On startup, InfraSight checks whether any admin user exists. If none does, it cr
 
 To change the password:
 1. Sign in with the bootstrap credentials.
-2. Go to **Settings → Users**.
+2. Go to **Administration → Users**.
 3. Locate the admin account and update the password, or invite a new admin and disable the bootstrap account.
 
 ---
@@ -216,46 +216,45 @@ Users with the `msp_admin` role can see all workspaces and switch between them. 
 
 ## Connector Configuration
 
-Connectors are configured primarily through environment variables and registered via the API. The Connectors UI shows catalog entries, setup instructions, registrations, and health status; it does not currently provide credential-entry forms.
+Connectors are managed through **Administration → Connectors**. The current release implements a shared connector onboarding framework backed by mocked backend lifecycle APIs. The workflow persists connector records, encrypted connector credential records, sync runs, discovered resources, and normalized inventory resources locally, but does not contact real AWS, Azure, Docker, Kubernetes, or host-agent services.
 
-### AWS Connector
+Every connector follows the same lifecycle:
 
-1. Create an IAM user with the following managed policies:
-   - `AmazonEC2ReadOnlyAccess`
-   - `CloudWatchReadOnlyAccess`
-   - `AWSCloudTrailReadOnlyAccess` (optional, for audit events)
-2. Set `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `AWS_DEFAULT_REGION`.
-3. Trigger EC2 discovery from the dashboard: **Sync → Sync AWS EC2**.
+Disconnected -> Configured -> Credentials Saved -> Connection Tested -> Discovery -> Synchronization -> Resources Imported -> Monitoring
 
-Alternatively, if InfraSight is deployed on an EC2 instance with an IAM role attached, the SDK will use the instance role automatically (no key variables needed).
+The UI presents this as:
 
-### Azure Connector
+Disconnected -> Configured -> Credentials Saved -> Connection Tested -> Discovery Started -> Resources Imported -> Healthy
 
-1. Register an application in Azure Active Directory.
-2. Assign the **Reader** role to the service principal at the subscription scope.
-3. Set `AZURE_SUBSCRIPTION_ID`, `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`.
-4. Trigger discovery: **Sync → Sync Azure VMs**.
+### Supported Connectors
 
-### Linux Agent (SSH)
+| Connector | Connection type | Configuration |
+|---|---|---|
+| AWS | API | IAM Role or Access Keys |
+| Azure | API | Tenant ID, subscription, client ID, client secret |
+| Windows/Linux Agent | Agent | Enrollment token, installer commands, connected agents, verification |
+| Docker | Agent / Docker Socket | Local Agent or Docker Socket configuration |
+| Kubernetes | Helm | Namespace, workspace token, generated Helm command, cluster verification |
 
-The Linux discovery connector uses SSH to collect metrics from target hosts. The backend must be able to SSH to target hosts from its network location.
+### Credential Storage
 
-Required configuration (per-target, via the connector registration API):
-- `host`: target hostname or IP
-- `username`: SSH username
-- `private_key` or `password`: SSH authentication credential (stored encrypted)
+Connector credentials submitted through the onboarding forms are stored as encrypted `ConnectorCredential` records. API responses return connector metadata and masked configuration only; encrypted credential values are never returned.
 
-### Windows Agent (WinRM)
+### Mocked Discovery and Inventory Import
 
-Similar to Linux, but uses WinRM for remote management. Requires WinRM to be enabled on target Windows hosts.
+Running connector discovery or synchronization creates simulated provider resources and imports them into the normalized `resources` inventory table. This makes the Dashboard, Inventory, Servers, Databases, Containers, Kubernetes, and Topology views behave as if a real provider sync completed.
 
-### Docker
+Mocked discovery currently imports representative resources:
 
-The Docker connector requires access to the Docker socket (`/var/run/docker.sock`) or a remote Docker API endpoint.
+- AWS: EC2, RDS, EKS
+- Azure: Virtual Machines, Azure SQL, AKS
+- Windows/Linux Agent: Servers, Services, Processes
+- Docker: Containers, Images
+- Kubernetes: Nodes, Pods, Deployments
 
-### Kubernetes
+### Future Real Integrations
 
-The Kubernetes connector is currently scaffolded. It requires a future kubeconfig or in-cluster service account integration with read access to pods, deployments, services, nodes, and namespaces. The current discovery action can complete without importing Kubernetes assets unless those resources have been supplied by another ingestion path.
+Real cloud and agent integrations should replace the mocked backend provider implementations behind the existing connector lifecycle APIs. New provider support should be added through the connector registry and shared lifecycle model rather than page-specific setup flows.
 
 ### Database Discovery
 
@@ -265,7 +264,7 @@ PostgreSQL and MSSQL discovery logic exists behind the discovery API and expects
 
 ## SMTP / Email Configuration
 
-Global SMTP defaults are set via environment variables. Per-tenant SMTP overrides can be configured by admins through the **Settings → Notifications → SMTP Configuration** UI in each workspace.
+Global SMTP defaults are set via environment variables. Per-tenant SMTP overrides can be configured by admins through the **Notifications → SMTP Configuration** UI in each workspace.
 
 **Order of precedence for email delivery:**
 1. Tenant-specific SMTP config (stored in the `smtp_configs` database table)

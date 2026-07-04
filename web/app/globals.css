@@ -52,6 +52,15 @@ textarea {
   letter-spacing: 0;
 }
 
+button:focus-visible {
+  outline: 2px solid hsl(var(--primary) / 0.45);
+  outline-offset: 2px;
+}
+
+button:disabled {
+  cursor: default;
+}
+
 /* Slim scrollbar */
 ::-webkit-scrollbar {
   width: 4px;

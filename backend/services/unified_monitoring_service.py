@@ -58,6 +58,7 @@ def collect_unified_monitoring(
                         "organization_id": organization_id,
                         "provider": resource.provider,
                         "resource_type": resource.resource_type,
+                        "platform": resource.platform,
                     },
                     tenant_id=tenant_id,
                     organization_id=organization_id,
@@ -172,6 +173,7 @@ def _upsert_resource_from_observation(db, observation):
         resource.organization_id = observation.get("organization_id", observation.get("tenant_id", "internal"))
         resource.provider = observation["provider"]
         resource.resource_type = observation["resource_type"]
+        resource.platform = observation.get("platform") or observation.get("metadata", {}).get("platform")
         resource.name = observation["name"]
         resource.region = observation["region"]
         resource.status = observation["status"]
@@ -185,6 +187,7 @@ def _upsert_resource_from_observation(db, observation):
         provider=observation["provider"],
         resource_id=observation["resource_id"],
         resource_type=observation["resource_type"],
+        platform=observation.get("platform") or observation.get("metadata", {}).get("platform"),
         name=observation["name"],
         region=observation["region"],
         status=observation["status"],

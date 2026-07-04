@@ -688,6 +688,7 @@ def _serialize_resource(resource):
         "resource_id": resource.resource_id,
         "provider": resource.provider,
         "resource_type": resource.resource_type,
+        "platform": resource.platform,
         "name": resource.name,
         "region": resource.region,
         "status": resource.status,

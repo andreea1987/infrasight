@@ -1,14 +1,15 @@
 import { useMemo, useState } from "react";
-import { Activity, Bell, BookOpen, Clock, History, Lightbulb, RotateCcw, Search, ShieldAlert } from "lucide-react";
+import { Activity, Bell, BookOpen, Clock, History, Lightbulb, RotateCcw, ShieldAlert } from "lucide-react";
 
 import { AlertRouting } from "@/components/dashboard/alert-routing";
 import { EmptyState } from "@/components/dashboard/empty-state";
+import { InfoTile } from "@/components/dashboard/info-tile";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { SeverityBadge } from "@/components/dashboard/severity-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { ActiveFilterBanner, ControlToolbar, FilterChip, SearchField } from "@/components/ui/controls";
 import { Select } from "@/components/ui/select";
 import { TechnologyIcon } from "@/dashboard/resourceIcons";
 import { updateAlertStatus } from "@/services/infrasight-api";
@@ -157,12 +158,12 @@ export function AlertsPanel({
       <AlertRouting channels={channels} />
 
       {activeFilterLabel && (
-        <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary/25 bg-primary/10 px-3 py-2 text-xs text-primary">
+        <ActiveFilterBanner>
           <span>Active filter: {activeFilterLabel}</span>
-          <button className="rounded-md px-2 py-1 text-xs font-semibold text-primary transition-colors hover:bg-primary/10" onClick={clearActiveFilter} type="button">
+          <Button onClick={clearActiveFilter} size="sm" type="button" variant="ghost">
             Clear
-          </button>
-        </div>
+          </Button>
+        </ActiveFilterBanner>
       )}
 
       <section className="grid gap-6 xl:grid-cols-[1fr_0.9fr]">
@@ -170,32 +171,25 @@ export function AlertsPanel({
           <CardHeader className="flex flex-col gap-3">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <CardTitle>Alert History</CardTitle>
-              <div className="relative">
-                <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
-                <Input className="pl-9" placeholder="Search alerts, resources or sources" value={query} onChange={(event) => setQuery(event.target.value)} />
-              </div>
+              <SearchField className="w-full sm:w-72" placeholder="Search alerts, resources or sources" value={query} onChange={(event) => setQuery(event.target.value)} />
             </div>
-            <div className="flex flex-wrap gap-2">
+            <ControlToolbar>
               {STATUS_VIEWS.map((view) => {
                 const count =
                   view.key === "active"
                     ? alertsWithKnowledge.filter((alert) => ACTIVE_ALERT_STATUSES.includes(normalizeStatus(alert.status))).length
                     : alertsWithKnowledge.filter((alert) => alert.status === view.key).length;
                 return (
-                  <button
+                  <FilterChip
                     key={view.key}
-                    className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                      statusView === view.key
-                        ? "border-primary/40 bg-primary/15 text-primary"
-                        : "border-border bg-muted/20 text-muted-foreground hover:text-foreground"
-                    }`}
+                    active={statusView === view.key}
                     onClick={() => setStatusView(view.key)}
                   >
                     {view.label} <span className="opacity-60">{count}</span>
-                  </button>
+                  </FilterChip>
                 );
               })}
-            </div>
+            </ControlToolbar>
           </CardHeader>
           <CardContent className="grid gap-2">
             {filteredAlerts.map((alert) => {
@@ -348,7 +342,7 @@ function AlertDetails({
         </div>
 
         {resource && (
-          <div className="rounded-md border border-border bg-background/60 p-3">
+          <InfoTile>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Resource Information</p>
             <div className="flex items-center gap-2">
               <TechnologyIcon name={resource.resource_type || resource.provider} surface="tooltip" />
@@ -357,7 +351,7 @@ function AlertDetails({
                 <p className="text-xs text-muted-foreground">{resource.provider} - {resource.resource_type} - {resource.region}</p>
               </div>
             </div>
-          </div>
+          </InfoTile>
         )}
 
         <Timeline alert={alert} />
@@ -483,7 +477,7 @@ function ResolutionLibrary({ alerts, resources }: { alerts: AlertRecord[]; resou
         {alerts.slice(0, 8).map((alert) => {
           const resource = resourceForAlert(alert, resources);
           return (
-            <div key={alert.id} className="rounded-md border border-border bg-background/60 p-3">
+            <InfoTile key={alert.id}>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="font-medium">{alert.title}</p>
@@ -496,7 +490,7 @@ function ResolutionLibrary({ alerts, resources }: { alerts: AlertRecord[]; resou
               <p className="mt-2 text-sm text-muted-foreground">
                 {alert.resolution_notes || alert.root_cause || "Resolution knowledge has not been captured yet."}
               </p>
-            </div>
+            </InfoTile>
           );
         })}
         {alerts.length === 0 && <EmptyState text="Resolved alerts will appear here as reusable incident knowledge." />}
@@ -516,7 +510,7 @@ function Timeline({ alert }: { alert: AlertRecord }) {
   ].filter(([, at]) => Boolean(at));
 
   return (
-    <div className="rounded-md border border-border bg-background/60 p-3">
+    <InfoTile>
       <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Timeline</p>
       <div className="space-y-2">
         {base.map(([label, at]) => <TimelineRow key={label} label={String(label)} detail={formatDate(String(at))} />)}
@@ -526,7 +520,7 @@ function Timeline({ alert }: { alert: AlertRecord }) {
           return <TimelineRow key={`${event}-${index}`} label={event} detail={formatDate(at)} />;
         })}
       </div>
-    </div>
+    </InfoTile>
   );
 }
 
@@ -542,19 +536,19 @@ function TimelineRow({ detail, label }: { detail: string; label: string }) {
 
 function InfoField({ label, value }: { label: string; value: number | string }) {
   return (
-    <div className="rounded-md border border-border bg-background/60 p-2">
+    <InfoTile className="p-2">
       <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
       <p className="mt-1 truncate text-sm">{value}</p>
-    </div>
+    </InfoTile>
   );
 }
 
 function KnowledgeMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border border-border bg-background/60 p-3">
+    <InfoTile>
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
       <p className="mt-1 text-sm font-semibold">{value}</p>
-    </div>
+    </InfoTile>
   );
 }
 
@@ -573,17 +567,17 @@ function TextArea({ label, onChange, value }: { label: string; onChange: (value:
 
 function ReadOnlyText({ label, value }: { label: string; value?: string | null }) {
   return (
-    <div className="rounded-md border border-border bg-background/60 p-3">
+    <InfoTile>
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
       <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{value?.trim() || "Not captured."}</p>
-    </div>
+    </InfoTile>
   );
 }
 
 function MetadataBlock({ metadata }: { metadata?: Record<string, unknown> }) {
   const entries = Object.entries(metadata ?? {}).filter(([key]) => key !== "timeline");
   return (
-    <div className="rounded-md border border-border bg-background/60 p-3">
+    <InfoTile>
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Metadata</p>
       {entries.length ? (
         <pre className="mt-2 max-h-52 overflow-auto whitespace-pre-wrap text-xs text-muted-foreground">
@@ -592,7 +586,7 @@ function MetadataBlock({ metadata }: { metadata?: Record<string, unknown> }) {
       ) : (
         <p className="mt-2 text-sm text-muted-foreground">No additional metadata captured.</p>
       )}
-    </div>
+    </InfoTile>
   );
 }
 

@@ -1,6 +1,12 @@
-import type { AlertRecord, Organization, Resource } from "@/types/infrasight";
+import type { AlertRecord, Organization, Resource, Workspace, WorkspaceGroup } from "@/types/infrasight";
 
 const DEFAULT_WORKSPACE_ID = "internal";
+const DEFAULT_ORGANIZATION_NAME = "Internal Operations";
+const WORKSPACE_ENVIRONMENTS = [
+  { key: "production", name: "Production", suffix: "" },
+  { key: "uat", name: "UAT", suffix: "uat" },
+  { key: "development", name: "Development", suffix: "development" },
+];
 
 /**
  * Builds the frontend workspace context from backend organizations plus the
@@ -26,25 +32,36 @@ export function buildWorkspaceContext({
   organizations: Organization[];
   resources: Resource[];
 }) {
-  const sourceWorkspaces = organizations.length
-    ? organizations.map((organization) => ({
-        id: organization.tenant_id,
-        name: organization.name,
-        status: organization.status,
-      }))
+  const sourceOrganizations = organizations.length
+    ? organizations
     : [
         {
-          id: activeWorkspaceId || DEFAULT_WORKSPACE_ID,
-          name: "Current workspace",
+          id: 0,
+          tenant_id: organizationIdFromWorkspace(activeWorkspaceId),
+          name: DEFAULT_ORGANIZATION_NAME,
           status: "active",
+          created_at: "",
         },
       ];
 
-  const workspaces = sourceWorkspaces.map((workspace) => {
+  const groups: WorkspaceGroup[] = sourceOrganizations.map((organization) => {
+    const organizationId = organization.tenant_id || DEFAULT_WORKSPACE_ID;
+    return {
+      organization_id: organizationId,
+      organization_name: organization.name,
+      workspaces: WORKSPACE_ENVIRONMENTS.map((environment) =>
+        buildWorkspaceOption(organization, organizationId, environment.name, environment.suffix),
+      ),
+    };
+  });
+  const sourceWorkspaces = groups.flatMap((group) => group.workspaces);
+
+  const workspaces = sourceWorkspaces.map((workspace): Workspace => {
     const resourceMatches = resources.filter((resource) => resourceWorkspaceId(resource) === workspace.id);
     const alertMatches = alerts.filter((alert) => alertWorkspaceId(alert) === workspace.id);
-    const scopedResources = resourceMatches.length || sourceWorkspaces.length > 1 ? resourceMatches : resources;
-    const scopedAlerts = alertMatches.length || sourceWorkspaces.length > 1 ? alertMatches : alerts;
+    const isPrimaryWorkspace = workspace.id === workspace.organization_id;
+    const scopedResources = resourceMatches.length || !isPrimaryWorkspace ? resourceMatches : resources;
+    const scopedAlerts = alertMatches.length || !isPrimaryWorkspace ? alertMatches : alerts;
 
     return {
       ...workspace,
@@ -56,17 +73,21 @@ export function buildWorkspaceContext({
 
   const activeWorkspace =
     workspaces.find((workspace) => workspace.id === activeWorkspaceId) ??
+    workspaces.find((workspace) => workspace.organization_id === organizationIdFromWorkspace(activeWorkspaceId)) ??
     workspaces[0] ??
     {
       id: DEFAULT_WORKSPACE_ID,
-      name: "Current workspace",
+      organization_id: DEFAULT_WORKSPACE_ID,
+      organization_name: DEFAULT_ORGANIZATION_NAME,
+      name: "Production",
+      environment: "Production",
       status: "active",
       resource_count: resources.length,
       alert_count: alerts.filter((alert) => alert.status === "open").length,
       health_score: calculateWorkspaceHealth(resources, alerts),
     };
 
-  return { activeWorkspace, workspaces };
+  return { activeWorkspace, groups, workspaces };
 }
 
 /**
@@ -91,4 +112,28 @@ function resourceWorkspaceId(resource: Resource) {
 
 function alertWorkspaceId(alert: AlertRecord) {
   return alert.tenant_id ?? alert.organization_id ?? DEFAULT_WORKSPACE_ID;
+}
+
+function buildWorkspaceOption(
+  organization: Organization,
+  organizationId: string,
+  environmentName: string,
+  suffix: string,
+) {
+  const workspaceId = suffix ? `${organizationId}:${suffix}` : organizationId;
+  return {
+    id: workspaceId,
+    organization_id: organizationId,
+    organization_name: organization.name,
+    name: environmentName,
+    environment: environmentName,
+    status: organization.status,
+    resource_count: 0,
+    alert_count: 0,
+    health_score: 100,
+  };
+}
+
+export function organizationIdFromWorkspace(workspaceId: string) {
+  return (workspaceId || DEFAULT_WORKSPACE_ID).split(":")[0] || DEFAULT_WORKSPACE_ID;
 }

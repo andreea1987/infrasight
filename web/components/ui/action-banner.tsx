@@ -1,5 +1,7 @@
 import { CheckCircle2, X, XCircle } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
+
 export type ActionResult = { ok: boolean; message: string };
 
 export function ActionBanner({
@@ -23,13 +25,16 @@ export function ActionBanner({
         <XCircle className="mt-0.5 size-4 shrink-0" />
       )}
       <span className="flex-1">{result.message}</span>
-      <button
+      <Button
         aria-label="Dismiss"
-        className="shrink-0 opacity-60 hover:opacity-100"
+        className="opacity-60 hover:opacity-100"
         onClick={onDismiss}
+        size="icon"
+        type="button"
+        variant="ghost"
       >
         <X className="size-4" />
-      </button>
+      </Button>
     </div>
   );
 }

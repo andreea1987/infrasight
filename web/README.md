@@ -1,16 +1,70 @@
-# React + Vite
+# InfraSight Web
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Next.js frontend for the InfraSight Hybrid Operations platform.
 
-Currently, two official plugins are available:
+## Application Modules
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+The frontend uses a modular dashboard shell with these primary areas:
 
-## React Compiler
+- Dashboard
+- Operations
+  - Alerts
+- Infrastructure
+  - Servers
+  - Databases
+  - Containers
+  - Kubernetes
+  - Topology
+- Inventory
+- Automation
+- Notifications
+- Administration
+  - Connectors
+  - Administration
+- OpenClaw
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Cloud providers are resource attributes rather than standalone pages. Provider-aware views use shared classification logic so AWS, Azure, On-Prem, and VMware resources can be displayed consistently across Inventory and Infrastructure modules.
 
-## Expanding the ESLint configuration
+## Connector UI
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+The Connectors page uses a shared connector framework. Supported connector types:
+
+- AWS (API)
+- Azure (API)
+- Windows/Linux Agent (Agent)
+- Docker (Agent / Docker Socket)
+- Kubernetes (Helm)
+
+The UI includes real onboarding forms and lifecycle actions backed by mocked backend APIs. Discovery and synchronization update local backend state and normalized inventory, but no real cloud or Kubernetes APIs are called yet.
+
+## UI Components
+
+Recent UI work standardized:
+
+- Buttons and icon buttons
+- Inputs and selects
+- Badges
+- Control toolbars
+- Tables
+- Info tiles
+- Resource/provider badges
+- Connector onboarding layouts
+
+Use shared UI primitives and dashboard components before adding page-specific styles.
+
+## Development
+
+```bash
+cd web
+npm install
+echo "NEXT_PUBLIC_API_URL=http://localhost:8000" > .env.local
+npm run dev
+```
+
+Open `http://localhost:3000`.
+
+## Build
+
+```bash
+npm run build
+```

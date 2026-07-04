@@ -3,10 +3,12 @@ import { ArrowLeft, Bot, Gauge, Link2, ListChecks, Server } from "lucide-react";
 import { getAlertsForResource } from "@/dashboard/health";
 import { AlertStream } from "@/components/dashboard/alert-stream";
 import { EmptyState } from "@/components/dashboard/empty-state";
+import { InfoTile } from "@/components/dashboard/info-tile";
 import { ResourceTable } from "@/components/dashboard/resource-table";
 import { SeverityBadge } from "@/components/dashboard/severity-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { platformLabel, providerLabel, resourceTypeLabel } from "@/dashboard/resourceClassification";
 import type { AlertRecord, MetricSample, Resource } from "@/types/infrasight";
 
 /**
@@ -78,18 +80,19 @@ export function ResourceDetailsPage({
           <CardContent className="grid gap-3 sm:grid-cols-2">
             {[
               ["Name", resource.name],
-              ["Provider", resource.provider],
-              ["Type", resource.resource_type],
+              ["Provider", providerLabel(resource)],
+              ["Resource Type", resourceTypeLabel(resource)],
+              ["Platform", platformLabel(resource)],
               ["Region", resource.region],
               ["Status", resource.status],
               ["Private IP", resource.private_ip ?? "n/a"],
               ["Resource ID", resource.resource_id ?? resource.id],
               ["Monitoring", resource.monitoring_status ?? "monitored"],
             ].map(([label, value]) => (
-              <div key={label} className="rounded-md border border-border bg-background/60 p-3">
+              <InfoTile key={label}>
                 <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
                 <p className="mt-1 break-words text-sm font-medium">{value}</p>
-              </div>
+              </InfoTile>
             ))}
           </CardContent>
         </Card>
@@ -133,7 +136,7 @@ export function ResourceDetailsPage({
           </CardHeader>
           <CardContent className="grid gap-2">
             {recentEvents.map((event) => (
-              <div key={event.id} className="rounded-md border border-border bg-background/60 p-3">
+              <InfoTile key={event.id}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="font-medium">{event.title}</p>
                   <SeverityBadge severity={event.severity} />
@@ -141,7 +144,7 @@ export function ResourceDetailsPage({
                 <p className="mt-1 text-xs text-muted-foreground">
                   {event.source} - {event.status}
                 </p>
-              </div>
+              </InfoTile>
             ))}
             {recentEvents.length === 0 && <EmptyState text="No recent events for this resource." />}
           </CardContent>
@@ -153,15 +156,15 @@ export function ResourceDetailsPage({
           </CardHeader>
           <CardContent className="grid gap-2">
             {resourceMetrics.map((metric) => (
-              <div
+              <InfoTile
                 key={metric.id}
-                className="grid grid-cols-[1fr_auto] gap-3 rounded-md border border-border bg-background/60 p-3"
+                className="grid grid-cols-[1fr_auto] gap-3"
               >
                 <span className="text-sm font-medium">{metric.metric_name}</span>
                 <span className="text-sm text-muted-foreground">
                   {metric.value} {metric.unit}
                 </span>
-              </div>
+              </InfoTile>
             ))}
             {resourceMetrics.length === 0 && <EmptyState text="No metrics collected for this resource." />}
           </CardContent>

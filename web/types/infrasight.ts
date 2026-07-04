@@ -18,9 +18,10 @@ export type Section =
   | "Kubernetes"
   | "Topology"
   | "Connectors"
-  | "Assets"
+  | "Inventory"
   | "Automation"
-  | "Settings";
+  | "Notifications"
+  | "Administration";
 
 export type ResourceMetadataValue =
   | string
@@ -42,6 +43,7 @@ export type Resource = {
   resource_id?: string;
   provider: string;
   resource_type: string;
+  platform?: string | null;
   name: string;
   region: string;
   status: string;
@@ -145,6 +147,58 @@ export type ConnectorRegistration = {
   last_checked_at?: string | null;
   created_at: string;
   updated_at?: string | null;
+};
+
+export type ConnectorInstance = {
+  id: number;
+  workspace_id: number;
+  provider: string;
+  connection_type: string;
+  status: string;
+  health: Record<string, ResourceMetadataValue>;
+  configuration: Record<string, ResourceMetadataValue>;
+  last_sync?: string | null;
+  created_at: string;
+  updated_at?: string | null;
+};
+
+export type ConnectorInstancePayload = {
+  provider: string;
+  connection_type: string;
+  status?: string;
+  health?: Record<string, ResourceMetadataValue>;
+  configuration?: Record<string, ResourceMetadataValue>;
+  credentials?: Array<{ type: string; value: string }>;
+};
+
+export type DiscoveredConnectorResource = {
+  id: number;
+  connector_id: number;
+  provider: string;
+  resource_type: string;
+  name: string;
+  metadata: Record<string, ResourceMetadataValue>;
+  health: Record<string, ResourceMetadataValue>;
+  status: string;
+  last_seen: string;
+};
+
+export type ConnectorOperationResult = {
+  operation: string;
+  status: string;
+  outcome: string;
+  message: string;
+  connector: ConnectorInstance;
+  resources: DiscoveredConnectorResource[];
+  sync?: {
+    id: number;
+    connector_id: number;
+    started_at: string;
+    finished_at?: string | null;
+    status: string;
+    resources_discovered: number;
+    error_message?: string | null;
+  } | null;
 };
 
 /** Cross-provider operational summary returned by /monitoring/operational-summary. */
@@ -525,15 +579,25 @@ export type AiProviderTestResult = {
 
 export type Workspace = {
   id: string;
+  organization_id: string;
+  organization_name: string;
   name: string;
+  environment: string;
   status: string;
   resource_count: number;
   alert_count: number;
   health_score: number;
 };
 
+export type WorkspaceGroup = {
+  organization_id: string;
+  organization_name: string;
+  workspaces: Workspace[];
+};
+
 export type WorkspaceContextValue = {
   activeWorkspace: Workspace;
+  groups: WorkspaceGroup[];
   workspaces: Workspace[];
 };
 

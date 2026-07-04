@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ControlToolbar, ToggleSwitch } from "@/components/ui/controls";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
@@ -162,42 +163,10 @@ export function AuthenticationSettings({ workspaceId }: { workspaceId: string })
 
         <div className="grid gap-3 lg:grid-cols-3">
           <Field label="Enable SSO">
-            <button
-              type="button"
-              role="switch"
-              aria-checked={form.enabled}
-              onClick={() => setForm({ ...form, enabled: !form.enabled })}
-              className={cn(
-                "relative inline-flex h-5 w-9 rounded-full border-2 border-transparent transition-colors",
-                form.enabled ? "bg-primary" : "bg-muted",
-              )}
-            >
-              <span
-                className={cn(
-                  "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform",
-                  form.enabled ? "translate-x-4" : "translate-x-0",
-                )}
-              />
-            </button>
+            <ToggleSwitch checked={form.enabled} onClick={() => setForm({ ...form, enabled: !form.enabled })} />
           </Field>
           <Field label="Auto Provision Users">
-            <button
-              type="button"
-              role="switch"
-              aria-checked={form.auto_provisioning_enabled}
-              onClick={() => setForm({ ...form, auto_provisioning_enabled: !form.auto_provisioning_enabled })}
-              className={cn(
-                "relative inline-flex h-5 w-9 rounded-full border-2 border-transparent transition-colors",
-                form.auto_provisioning_enabled ? "bg-primary" : "bg-muted",
-              )}
-            >
-              <span
-                className={cn(
-                  "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transition-transform",
-                  form.auto_provisioning_enabled ? "translate-x-4" : "translate-x-0",
-                )}
-              />
-            </button>
+            <ToggleSwitch checked={form.auto_provisioning_enabled} onClick={() => setForm({ ...form, auto_provisioning_enabled: !form.auto_provisioning_enabled })} />
           </Field>
           <Field label="Provider Type">
             <Select
@@ -301,7 +270,7 @@ export function AuthenticationSettings({ workspaceId }: { workspaceId: string })
           </Field>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <ControlToolbar className="gap-3">
           <Button size="sm" disabled={!canSave || busy} onClick={handleSave}>
             {busy ? "Saving..." : "Save SSO Provider"}
           </Button>
@@ -310,7 +279,7 @@ export function AuthenticationSettings({ workspaceId }: { workspaceId: string })
               {message.text}
             </span>
           )}
-        </div>
+        </ControlToolbar>
 
         <div className="space-y-2">
           <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
@@ -351,11 +320,11 @@ export function AuthenticationSettings({ workspaceId }: { workspaceId: string })
                       </p>
                     )}
                   </div>
-                  <div className="flex gap-2">
+                  <ControlToolbar>
                     <Button
                       size="sm"
                       variant="secondary"
-                      className="h-7 gap-1 text-[11px]"
+                      className="text-[11px]"
                       disabled={pendingId === provider.id}
                       onClick={() => runTest(provider)}
                     >
@@ -365,13 +334,13 @@ export function AuthenticationSettings({ workspaceId }: { workspaceId: string })
                     <Button
                       size="sm"
                       variant="secondary"
-                      className="h-7 text-[11px]"
+                      className="text-[11px]"
                       disabled={pendingId === provider.id}
                       onClick={() => toggleProvider(provider)}
                     >
                       {provider.enabled ? "Disable" : "Enable"}
                     </Button>
-                  </div>
+                  </ControlToolbar>
                 </div>
               </div>
             ))
@@ -413,12 +382,12 @@ function RoleMappingEditor({
               next[event.target.value] = role;
               onChange(next);
             }}
-            className="h-8 text-xs"
+            className="text-xs"
           />
           <Select
             value={role}
             onChange={(event) => onChange({ ...value, [group]: event.target.value as InfrasightRole })}
-            className="h-8 text-xs"
+            className="text-xs"
           >
             <option value="admin">Admin</option>
             <option value="operator">Operator</option>
@@ -426,14 +395,16 @@ function RoleMappingEditor({
           </Select>
         </div>
       ))}
-      <button
+      <Button
         type="button"
-        className="flex items-center gap-1 text-[11px] text-primary hover:underline"
+        className="px-0 text-[11px] text-primary"
         onClick={() => onChange({ ...value, "New-Group": "viewer" })}
+        size="sm"
+        variant="ghost"
       >
         <ShieldCheck className="size-3" />
         Add group mapping
-      </button>
+      </Button>
     </div>
   );
 }

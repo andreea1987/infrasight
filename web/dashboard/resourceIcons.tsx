@@ -50,6 +50,10 @@ export const technologyIcons: Record<string, RegistryIcon> = {
   rds: AwsLogo,
   azure: AzureLogo,
   microsoft_azure: AzureLogo,
+  google_cloud: Cloud,
+  gcp: Cloud,
+  vmware: Server,
+  vsphere: Server,
   kubernetes: KubernetesLogo,
   k8s: KubernetesLogo,
   docker: DockerLogo,
@@ -69,6 +73,7 @@ export const technologyIcons: Record<string, RegistryIcon> = {
 
 export const resourceIcons: Record<string, RegistryIcon> = {
   server: Server,
+  virtual_machine: Server,
   host: Server,
   vm: Server,
   instance: Server,
@@ -80,12 +85,14 @@ export const resourceIcons: Record<string, RegistryIcon> = {
   alert: AlertTriangle,
   automation: Workflow,
   inventory: Archive,
+  storage: Archive,
   topology: GitBranch,
   connector: Zap,
   openclaw: Bot,
   cloud: Cloud,
   health: ShieldCheck,
   network: Network,
+  network_device: Network,
   settings: Settings,
 };
 

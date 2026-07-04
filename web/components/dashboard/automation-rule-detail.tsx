@@ -14,10 +14,18 @@ import {
   XCircle,
   Zap,
 } from "lucide-react";
+import {
+  DashboardTable,
+  DashboardTableCell,
+  DashboardTableHeader,
+  DashboardTableRow,
+} from "@/components/dashboard/dashboard-table";
+import { StatusBadge } from "@/components/dashboard/resource-badges";
+import { SeverityBadge } from "@/components/dashboard/severity-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { SeverityBadge } from "@/components/dashboard/severity-badge";
+import { ControlToolbar } from "@/components/ui/controls";
 import { cn } from "@/lib/utils";
 import type { NotificationChannel } from "@/types/infrasight";
 import {
@@ -68,27 +76,16 @@ function fmtDuration(ms: number): string {
 // ── Execution row ─────────────────────────────────────────────────────────────
 
 function ExecRow({ rec }: { rec: ExecutionRecord }) {
-  const ok = rec.status === "success";
   return (
-    <tr className="border-b border-border/60 last:border-0">
-      <td className="py-2.5 pr-4 text-xs text-muted-foreground">{formatTs(rec.timestamp)}</td>
-      <td className="py-2.5 pr-4">
-        <span
-          className={cn(
-            "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase",
-            ok
-              ? "bg-primary/10 text-primary"
-              : "bg-destructive/10 text-destructive",
-          )}
-        >
-          {ok ? <CheckCircle2 className="size-3" /> : <XCircle className="size-3" />}
-          {rec.status}
-        </span>
-      </td>
-      <td className="py-2.5 pr-4 text-xs text-muted-foreground font-mono">{fmtDuration(rec.durationMs)}</td>
-      <td className="py-2.5 pr-4 text-xs">{rec.targetResource}</td>
-      <td className="py-2.5 text-xs text-muted-foreground max-w-xs truncate">{rec.result}</td>
-    </tr>
+    <DashboardTableRow>
+      <DashboardTableCell className="text-xs" muted>{formatTs(rec.timestamp)}</DashboardTableCell>
+      <DashboardTableCell>
+        <StatusBadge status={rec.status} />
+      </DashboardTableCell>
+      <DashboardTableCell className="font-mono text-xs" muted>{fmtDuration(rec.durationMs)}</DashboardTableCell>
+      <DashboardTableCell className="text-xs">{rec.targetResource}</DashboardTableCell>
+      <DashboardTableCell className="max-w-xs truncate text-xs" muted>{rec.result}</DashboardTableCell>
+    </DashboardTableRow>
   );
 }
 
@@ -133,13 +130,16 @@ export function AutomationRuleDetail({
     <div className="flex flex-col gap-5">
       {/* Back + title */}
       <div className="flex items-start gap-3">
-        <button
+        <Button
           onClick={onBack}
-          className="mt-0.5 flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+          className="mt-0.5 text-xs text-muted-foreground"
+          size="sm"
+          type="button"
+          variant="ghost"
         >
           <ArrowLeft className="size-3.5" />
           Back
-        </button>
+        </Button>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-base font-semibold leading-tight">{rule.name}</h2>
@@ -156,25 +156,25 @@ export function AutomationRuleDetail({
           </div>
           <p className="mt-1 text-xs text-muted-foreground">{rule.description}</p>
         </div>
-        <div className="flex shrink-0 gap-2">
+        <ControlToolbar className="shrink-0">
           <Button
             variant="secondary"
             size="sm"
-            className="h-8 text-xs"
+            className="text-xs"
             onClick={() => onToggle(rule.id)}
           >
             {rule.enabled ? "Disable" : "Enable"}
           </Button>
           <Button
             size="sm"
-            className="h-8 gap-1.5 text-xs"
+            className="text-xs"
             onClick={() => onRun(rule.id)}
             disabled={rule.status === "running" || runningId !== null}
           >
             <Play className={cn("size-3", rule.status === "running" && "animate-pulse")} />
             {rule.status === "running" ? "Running…" : "Run Now"}
           </Button>
-        </div>
+        </ControlToolbar>
       </div>
 
       {/* Stats row */}
@@ -201,7 +201,7 @@ export function AutomationRuleDetail({
             key={t.id}
             onClick={() => setTab(t.id)}
             className={cn(
-              "-mb-px border-b-2 px-3 pb-2 text-xs font-semibold uppercase tracking-wide transition-colors",
+              "-mb-px min-h-9 border-b-2 px-3 pb-2 text-xs font-semibold uppercase tracking-wide outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25",
               tab === t.id
                 ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground",
@@ -346,27 +346,14 @@ export function AutomationRuleDetail({
                 No execution history. Run the rule to see results here.
               </p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[620px]">
-                  <thead>
-                    <tr className="border-b border-border">
-                      {["Time", "Status", "Duration", "Target Resource", "Result"].map((h) => (
-                        <th
-                          key={h}
-                          className="pb-2 pr-4 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
-                        >
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
+              <DashboardTable minWidth="620px">
+                  <DashboardTableHeader columns={["Time", "Status", "Duration", "Target Resource", "Result"]} />
                   <tbody>
                     {rule.executionHistory.map((rec) => (
                       <ExecRow key={rec.id} rec={rec} />
                     ))}
                   </tbody>
-                </table>
-              </div>
+              </DashboardTable>
             )}
           </CardContent>
         </Card>

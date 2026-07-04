@@ -1,9 +1,18 @@
-import { Search } from "lucide-react";
-
+import { EmptyState } from "@/components/dashboard/empty-state";
 import { ResourceTable } from "@/components/dashboard/resource-table";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { ActiveFilterBanner, ControlToolbar, SearchField } from "@/components/ui/controls";
 import { Select } from "@/components/ui/select";
+import {
+  HEALTH_OPTIONS,
+  PLATFORM_OPTIONS,
+  PROVIDER_OPTIONS,
+  RESOURCE_TYPE_OPTIONS,
+  STATUS_OPTIONS,
+  labelFor,
+  providerConfig,
+} from "@/dashboard/resourceClassification";
 import type { Resource } from "@/types/infrasight";
 
 export function InventoryPanel({
@@ -13,8 +22,13 @@ export function InventoryPanel({
   clients,
   health,
   healthStates,
+  platform,
+  platforms,
   provider,
+  providerActionBusy,
+  providerCounts = {},
   providers,
+  onProviderAction,
   onSelectResource,
   query,
   resources,
@@ -22,6 +36,7 @@ export function InventoryPanel({
   resourceTypes,
   setClient,
   setHealth,
+  setPlatform,
   setProvider,
   setQuery,
   setResourceType,
@@ -35,8 +50,13 @@ export function InventoryPanel({
   clients: string[];
   health: string;
   healthStates: string[];
+  platform: string;
+  platforms: string[];
   provider: string;
+  providerActionBusy?: boolean;
+  providerCounts?: Record<string, number>;
   providers: string[];
+  onProviderAction?: (provider: string) => void;
   onSelectResource: (resource: Resource) => void;
   query: string;
   resources: Resource[];
@@ -44,6 +64,7 @@ export function InventoryPanel({
   resourceTypes: string[];
   setClient: (value: string) => void;
   setHealth: (value: string) => void;
+  setPlatform: (value: string) => void;
   setProvider: (value: string) => void;
   setQuery: (value: string) => void;
   setResourceType: (value: string) => void;
@@ -51,45 +72,54 @@ export function InventoryPanel({
   status: string;
   statuses: string[];
 }) {
+  const selectedProvider = providerConfig(provider);
+  const selectedProviderHasResources = provider === "all" || (providerCounts[provider] ?? 0) > 0;
+  const providerEmptyState = provider !== "all" && !selectedProviderHasResources && selectedProvider;
+  const providerActionDisabled = providerActionBusy || selectedProvider?.comingSoon || !selectedProvider?.actionPath;
+
   return (
     <Card className="console-line">
       <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <CardTitle>Normalized Inventory</CardTitle>
-        <div className="flex flex-wrap gap-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
-            <Input
-              className="pl-9"
-              placeholder="Search resources"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
-          </div>
+        <ControlToolbar>
+          <SearchField
+            className="w-full sm:w-56"
+            placeholder="Search resources"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
           <Select value={provider} onChange={(event) => setProvider(event.target.value)}>
             {providers.map((item) => (
               <option key={item} value={item}>
-                {item === "all" ? "All providers" : item}
+                {providerFilterLabel(item, providerCounts)}
               </option>
             ))}
           </Select>
           <Select value={status} onChange={(event) => setStatus(event.target.value)}>
             {statuses.map((item) => (
               <option key={item} value={item}>
-                {item === "all" ? "All statuses" : item}
+                {item === "all" ? "All statuses" : labelFor(item, STATUS_OPTIONS)}
               </option>
             ))}
           </Select>
           <Select value={resourceType} onChange={(event) => setResourceType(event.target.value)}>
             {resourceTypes.map((item) => (
               <option key={item} value={item}>
-                {item === "all" ? "All types" : item}
+                {item === "all" ? "All resource types" : labelFor(item, RESOURCE_TYPE_OPTIONS)}
+              </option>
+            ))}
+          </Select>
+          <Select value={platform} onChange={(event) => setPlatform(event.target.value)}>
+            {platforms.map((item) => (
+              <option key={item} value={item}>
+                {item === "all" ? "All platforms" : labelFor(item, PLATFORM_OPTIONS)}
               </option>
             ))}
           </Select>
           <Select value={health} onChange={(event) => setHealth(event.target.value)}>
             {healthStates.map((item) => (
               <option key={item} value={item}>
-                {item === "all" ? "All health" : item}
+                {item === "all" ? "All health" : labelFor(item, HEALTH_OPTIONS)}
               </option>
             ))}
           </Select>
@@ -100,23 +130,47 @@ export function InventoryPanel({
               </option>
             ))}
           </Select>
-        </div>
+        </ControlToolbar>
       </CardHeader>
       <CardContent>
         {activeFilterLabel && (
-          <div className="mb-4 flex flex-wrap items-center gap-2 rounded-md border border-primary/25 bg-primary/10 px-3 py-2 text-xs text-primary">
+          <ActiveFilterBanner className="mb-4">
             <span>Active filter: {activeFilterLabel}</span>
-            <button
-              className="rounded-md px-2 py-1 text-xs font-semibold text-primary transition-colors hover:bg-primary/10"
+            <Button
               onClick={clearActiveFilter}
+              size="sm"
               type="button"
+              variant="ghost"
             >
               Clear
-            </button>
+            </Button>
+          </ActiveFilterBanner>
+        )}
+        {resources.length ? (
+          <ResourceTable onSelectResource={onSelectResource} resources={resources} />
+        ) : (
+          <div className="space-y-3">
+            <EmptyState text={providerEmptyState ? providerEmptyState.emptyState : "No resources match the current filters."} />
+            {providerEmptyState && (
+              <Button
+                disabled={providerActionDisabled}
+                onClick={() => onProviderAction?.(provider)}
+                type="button"
+              >
+                {providerEmptyState.actionLabel}
+              </Button>
+            )}
           </div>
         )}
-        <ResourceTable onSelectResource={onSelectResource} resources={resources} />
       </CardContent>
     </Card>
   );
+}
+
+function providerFilterLabel(item: string, providerCounts: Record<string, number>) {
+  if (item === "all") return "All providers";
+  const provider = providerConfig(item);
+  const label = provider?.label ?? labelFor(item, PROVIDER_OPTIONS);
+  if (provider?.comingSoon) return `${label} (Coming Soon)`;
+  return `${label} (${providerCounts[item] ?? 0})`;
 }

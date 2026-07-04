@@ -1,6 +1,7 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
+from sqlalchemy.orm import relationship
 
 from backend.database.base import Base
 
@@ -13,6 +14,25 @@ class Organization(Base):
     name = Column(String)
     status = Column(String, default="active", index=True)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    workspaces = relationship("Workspace", back_populates="organization", cascade="all, delete-orphan")
+
+
+class Workspace(Base):
+    __tablename__ = "workspaces"
+    __table_args__ = (
+        UniqueConstraint("organization_id", "name", "environment", name="uq_workspace_org_name_environment"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=False, index=True)
+    name = Column(String, nullable=False, index=True)
+    environment = Column(String, nullable=False, default="production", index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    organization = relationship("Organization", back_populates="workspaces")
+    connectors = relationship("Connector", back_populates="workspace", cascade="all, delete-orphan")
 
 
 class OrganizationMembership(Base):

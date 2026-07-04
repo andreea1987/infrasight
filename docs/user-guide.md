@@ -1,7 +1,7 @@
 # InfraSight User Guide
 
 > **Platform version:** Early Access  
-> **Last updated:** June 2026
+> **Last updated:** July 2026
 
 ---
 
@@ -18,29 +18,30 @@
 9. [Containers](#containers)
 10. [Kubernetes](#kubernetes)
 11. [Topology](#topology)
-12. [Assets (Full Inventory)](#assets-full-inventory)
+12. [Inventory](#inventory)
 13. [Automation](#automation)
-14. [Settings](#settings)
-    - [Notifications](#notifications-settings)
+14. [Notifications](#notifications-settings)
+15. [Administration](#administration)
+    - [Connectors](#connectors-and-data-sources)
     - [User Management](#user-management)
     - [Authentication / SSO](#authentication--sso)
-15. [Common Workflows](#common-workflows)
-16. [Troubleshooting](#troubleshooting)
-17. [Known Limitations](#known-limitations)
+16. [Common Workflows](#common-workflows)
+17. [Troubleshooting](#troubleshooting)
+18. [Known Limitations](#known-limitations)
 
 ---
 
 ## Product Overview
 
-InfraSight is an infrastructure monitoring and observability platform designed for teams managing cloud and on-premises environments. It provides a unified view of your infrastructure health across AWS, Azure, Linux/Windows servers, Docker containers, and Kubernetes clusters.
+InfraSight is a multi-tenant hybrid operations platform designed for teams managing infrastructure across multiple organizations and workspaces. It provides a unified view of infrastructure health across cloud, on-premises, container, and Kubernetes environments.
 
 **Core capabilities:**
 
 | Capability | Status |
 |---|---|
-| Infrastructure inventory (Servers, DBs, Containers, Kubernetes) | Available |
+| Central inventory catalogue (Servers, DBs, Containers, Kubernetes) | Available |
 | Health monitoring with severity alerts | Available |
-| Alert notifications (Email, Slack, Teams) | Available |
+| Email alert notifications | Available |
 | AI operations assistant (OpenClaw) | Available (read-only; can reference previous incidents) |
 | Dependency topology graph | Available |
 | Automation rule templates | Available (frontend demo execution) |
@@ -48,8 +49,25 @@ InfraSight is an infrastructure monitoring and observability platform designed f
 | Local authentication | Available |
 | SSO / SAML / OIDC | Configuration UI only — callback validation pending |
 | User management | Available |
+| Connector onboarding for AWS, Azure, Agent, Docker, and Kubernetes | Available with mocked backend workflows |
 
-InfraSight is designed for **Managed Service Providers (MSPs)** and internal IT operations teams. Each **workspace** corresponds to an isolated tenant (a client organization or internal environment). You can manage multiple workspaces from a single login.
+InfraSight is designed for **Managed Service Providers (MSPs)** and internal IT operations teams. Each **organization** can contain one or more **workspaces**, and operational data is scoped to the active workspace.
+
+Supported providers are currently represented as resource attributes:
+
+- AWS
+- Azure
+- On-Prem
+- VMware
+
+Supported resource types are:
+
+- Servers
+- Databases
+- Containers
+- Kubernetes
+
+Cloud providers are not separate application modules. For example, AWS EC2 and Azure VM assets both appear in the Servers module and central Inventory with provider metadata.
 
 ---
 
@@ -104,7 +122,7 @@ At the top of the dashboard, four metric cards show:
 | **Running** | Resources in an actively running/available state (percentage) |
 | **Open Alerts** | Number of unresolved alerts, split by critical and warning |
 
-**Click any card** to jump to the Assets view pre-filtered by that metric (e.g., clicking "Open Alerts" shows only resources with active alerts).
+**Click any card** to jump to the Inventory view pre-filtered by that metric (e.g., clicking "Open Alerts" shows only resources with active alerts).
 
 ### Charts
 
@@ -250,18 +268,25 @@ OpenClaw remembers the last 10 messages in your current session. Closing the pag
 
 Navigate to **Connectors** in the sidebar to set up and monitor your data source connections.
 
-> **Current scope:** The Connectors page is a status and setup guidance view. Connector registration exists in the backend API, but the UI does not yet provide credential-entry or registration forms.
+> **Current scope:** Connector onboarding behaves like a production workflow using mocked backend APIs. Connector records, encrypted credential records, sync runs, discovered resources, and imported inventory records are persisted locally. No real AWS, Azure, Docker, Kubernetes, or agent service calls are made yet.
 
 ### Supported connector types
 
-| Connector | Data collected |
+| Connector | Connection type | Current workflow |
 |---|---|
-| **AWS** | EC2 instances, IAM, CloudWatch metrics, CloudTrail events |
-| **Azure** | Virtual Machines, Activity Logs, Azure Monitor metrics |
-| **Linux Agent** | CPU, memory, disk, services, process data (via SSH) |
-| **Windows Agent** | CPU, memory, disk, Windows services, event logs (via WinRM) |
-| **Docker** | Container inventory, health, resource usage, restart counts |
-| **Kubernetes** | Pods, Deployments, Services, Ingress, Nodes, namespaces |
+| **AWS** | API | IAM Role or Access Keys form, save, test connection, discovery, resources |
+| **Azure** | API | Tenant, subscription, client ID, client secret, save, test, discovery |
+| **Windows/Linux Agent** | Agent | Generate enrollment token, installer commands, connected agents, verify agent |
+| **Docker** | Agent / Docker Socket | Local Agent or Docker Socket configuration, save, test, discover containers |
+| **Kubernetes** | Helm | Namespace, workspace token, Helm command, verify cluster, discover resources |
+
+### Connector lifecycle
+
+Every connector follows the same lifecycle:
+
+Disconnected -> Configured -> Credentials Saved -> Connection Tested -> Discovery Started -> Resources Imported -> Healthy
+
+The lifecycle strip on the Connectors page shows progress as you save configuration, test the connection, run discovery, and import resources.
 
 ### Connector status
 
@@ -278,30 +303,48 @@ For each registered connector you can see:
 
 Click **Refresh** to reload the current health status from the backend.
 
-### Setting up a connector
+### Onboarding a connector
 
-The Connectors page provides step-by-step setup instructions for each connector type. Select a connector from the catalog to see its requirements.
+Select a connector card at the top of the page. The shared onboarding panel adapts to the selected connector and shows connector-specific fields while preserving the same workflow actions.
 
 **AWS:**
-1. Create an IAM user or role with `ReadOnly` permissions.
-2. Configure `AWS_DEFAULT_REGION`, `AWS_ACCESS_KEY_ID`, and `AWS_SECRET_ACCESS_KEY` in the backend environment.
-3. Use the **Sync AWS EC2** action from the dashboard header to trigger discovery.
+1. Choose **IAM Role** or **Access Keys**.
+2. Enter the IAM role ARN and external ID, or enter access key fields.
+3. Click **Save**.
+4. Click **Test Connection**.
+5. Click **Run Discovery**.
+6. Click **View Resources** to inspect discovered mock EC2, RDS, and EKS resources.
 
 **Azure:**
-1. Create a Service Principal in Azure AD with Reader role.
-2. Set `AZURE_SUBSCRIPTION_ID`, `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, and `AZURE_CLIENT_SECRET` in the backend environment.
-3. Use the **Sync Azure VMs** action to trigger discovery.
+1. Enter tenant ID, subscription, client ID, and client secret.
+2. Click **Save**.
+3. Click **Test Connection**.
+4. Click **Run Discovery**.
+5. Discovered resources are imported as mock Virtual Machines, Azure SQL, and AKS resources.
 
 **Linux / Windows Agent:**
-1. Ensure SSH (Linux) or WinRM (Windows) is accessible from the InfraSight backend.
-2. Use the **Discover Linux** or **Discover Windows** action from the Servers page.
+1. Generate an enrollment token.
+2. Use the displayed Windows or Linux installation command.
+3. Use **Download Windows Agent** or **Download Linux Agent** placeholders as needed.
+4. Review the connected agents list.
+5. Click **Verify Agent**.
+6. Run discovery to import mock servers, services, and processes.
 
-**Docker / Kubernetes:**
-1. Ensure the Docker socket or kubeconfig is accessible from the backend.
-2. Use the **Discover Docker** or **Discover Kubernetes** action from the respective page.
+**Docker:**
+1. Choose **Local Agent** or **Docker Socket**.
+2. Enter socket or agent configuration.
+3. Click **Save**.
+4. Click **Test Connection**.
+5. Click **Discover Containers** to import mock containers and images.
 
-> **Note:** Connector registration currently requires backend environment variable configuration. The UI shows setup instructions and status; it does not provide a form to enter credentials directly.
-> Kubernetes discovery is currently a scaffolded connector and may return zero assets unless Kubernetes resources have been supplied by another ingestion path.
+**Kubernetes:**
+1. Enter the namespace and cluster ID.
+2. Generate a workspace token.
+3. Copy the generated Helm command.
+4. Click **Verify Cluster**.
+5. Click **Discover Resources** to import mock nodes, pods, and deployments.
+
+After successful discovery, resources are automatically imported into the central Inventory and appear in the relevant Infrastructure pages, Topology, and Dashboard counts.
 
 ---
 
@@ -440,9 +483,7 @@ Navigate to **Kubernetes** in the sidebar to view Kubernetes workloads across al
 
 ### Discovery
 
-Click **Discover Kubernetes** to refresh the Kubernetes inventory from connected clusters.
-
-> **Partial implementation:** The Kubernetes discovery connector is currently scaffolded and can complete without importing resources. Kubernetes assets may still appear if they were created by another source or seeded data.
+Click **Discover Kubernetes** to refresh Kubernetes inventory. In the current release, Kubernetes resources are populated through the mocked connector lifecycle and imported into Inventory after successful discovery.
 
 ### Kubernetes resource table
 
@@ -527,15 +568,15 @@ The dependency panel shows a **Blast Radius** section, which uses graph traversa
 
 ---
 
-## Assets (Full Inventory)
+## Inventory
 
-[Screenshot: Assets inventory]
+[Screenshot: Inventory]
 
-Navigate to **Assets** in the sidebar to see the complete, unified inventory of all resources across all types.
+Navigate to **Inventory** in the sidebar to see the complete, unified inventory of all resources across all types.
 
 ### What is shown
 
-The Assets view lists every discovered resource regardless of type — servers, databases, containers, Kubernetes resources, and cloud services — in a single table.
+The Inventory view lists every discovered resource regardless of type — servers, databases, containers, Kubernetes resources, and cloud services — in a single table.
 
 ### Filtering
 
@@ -629,9 +670,9 @@ Click **Run Now** on any rule card or in the rule detail view to simulate an imm
 
 ---
 
-## Settings
+## Administration
 
-Navigate to **Settings** in the sidebar to access notification configuration, user management, and authentication settings.
+Navigate to **Administration** in the sidebar to access connector onboarding, notification configuration, user management, and authentication settings.
 
 ---
 
@@ -639,7 +680,7 @@ Navigate to **Settings** in the sidebar to access notification configuration, us
 
 [Screenshot: Notification settings]
 
-The Notifications settings page has three sections: SMTP configuration, channel management, and delivery history.
+The Notifications settings page has SMTP configuration, email destination management, and delivery history.
 
 #### SMTP Configuration
 
@@ -671,23 +712,9 @@ To add a new destination:
 
 Each configured destination shows its last test result and timestamp. Use the **Test**, **Disable**, and **Delete** buttons to manage individual destinations.
 
-#### Slack Webhooks
+#### Future Channels
 
-Add Slack incoming webhook URLs to receive alert notifications in Slack channels.
-
-1. Create an incoming webhook in your Slack workspace settings.
-2. Enter a **Name** and the **webhook URL** (must start with `https://hooks.slack.com/`).
-3. Click **Add**.
-
-> **Security:** Webhook URLs are masked after saving. Only the first 24 characters and last 6 characters are visible (e.g., `https://hooks.slack.com/ser...XXXXXX`).
-
-#### Teams Webhooks
-
-Add Microsoft Teams incoming webhook URLs to receive alert notifications in Teams channels.
-
-1. Create a webhook in your Teams channel settings.
-2. Enter a **Name** and the **webhook URL** (`https://...`).
-3. Click **Add**.
+Additional channels such as Slack, Microsoft Teams, and webhooks are planned for future releases. Email is the implemented operational notification channel in the current release.
 
 #### Delivery History
 
@@ -697,7 +724,7 @@ The delivery history table at the bottom of the Notifications page shows a log o
 |---|---|
 | Time | When the delivery was attempted |
 | Channel | Name of the destination channel |
-| Type | email / slack / teams |
+| Type | email |
 | Destination | Masked destination address or URL |
 | Status | Sent / Failed / Skipped |
 | Response | Round-trip delivery time in milliseconds |
@@ -711,7 +738,7 @@ Click **Show more** to load additional history records.
 
 [Screenshot: User management page]
 
-Navigate to **Settings → Users** to manage user accounts.
+Navigate to **Administration → Users** to manage user accounts.
 
 > **Required role:** Admin
 
@@ -759,7 +786,7 @@ The user management page includes a reference section about SSO-based user provi
 
 [Screenshot: Authentication settings page]
 
-Navigate to **Settings → Authentication** to configure Single Sign-On providers.
+Navigate to **Administration → Authentication** to configure Single Sign-On providers.
 
 > **Required role:** Admin
 
@@ -816,26 +843,28 @@ The configured providers list shows each provider with its status, last test res
 1. Open the **Dashboard**. A red alert badge on the metric card indicates critical alerts.
 2. Click the **Open Alerts** card to jump to the Alerts panel filtered to open alerts.
 3. Find the critical alert in the list. Note the affected resource name.
-4. Navigate to **Assets** and search for the resource name to see its current health and metrics.
+4. Navigate to **Inventory** and search for the resource name to see its current health and metrics.
 5. Click the resource to open the detail view and review metric history.
 6. Open **OpenClaw** and ask: *"Explain the most recent critical alert for [resource name]."*
 7. Once the issue is resolved, the alert status will update to **Resolved** automatically (if monitoring rules detect recovery) or it can be noted via the alert detail view.
 
 ### Adding a new notification channel
 
-1. Go to **Settings → Notifications**.
-2. In the appropriate section (Email, Slack, or Teams), fill in the channel name and destination.
+1. Go to **Notifications**.
+2. In the Email Destinations section, fill in the channel name and destination email address.
 3. Click **Add**.
 4. Click **Test** on the new channel to verify delivery.
 5. Check **Delivery History** at the bottom of the page to confirm the test was sent.
 
-### Discovering new AWS resources
+### Onboarding an AWS connector
 
-1. Ensure AWS credentials are configured in the backend environment.
-2. Click the **Sync** button in the top header of the dashboard.
-3. Select **Sync AWS EC2** from the dropdown.
-4. Wait for the discovery run to complete (typically a few seconds).
-5. Navigate to **Servers** to see the updated inventory.
+1. Navigate to **Administration → Connectors**.
+2. Select **AWS**.
+3. Choose **IAM Role** or **Access Keys** and complete the form.
+4. Click **Save**.
+5. Click **Test Connection**.
+6. Click **Run Discovery**.
+7. Navigate to **Inventory**, **Servers**, **Databases**, **Kubernetes**, or **Topology** to see the imported mocked resources.
 
 ### Setting up your first automation rule
 
@@ -863,7 +892,7 @@ The configured providers list shows each provider with its status, last test res
 ### "No resources found" — inventory is empty
 
 - Check that at least one connector is configured and in **Connected** status on the Connectors page.
-- Run a manual discovery (Sync AWS EC2, Sync Azure VMs, Discover Linux, etc.) from the dashboard header or the relevant resource page.
+- Run discovery from **Administration → Connectors**. Successful mocked discovery imports resources into Inventory.
 - Check the backend logs for discovery errors.
 
 ### OpenClaw returns no response or shows a connection error
@@ -872,14 +901,13 @@ The configured providers list shows each provider with its status, last test res
 - Confirm that `OPENAI_API_KEY` is set in the backend environment.
 - Check that the `OPENCLAW_MODEL` setting matches an available model in your OpenAI account.
 
-### Alerts are not being delivered to Slack/Email/Teams
+### Email alerts are not being delivered
 
-1. Go to **Settings → Notifications**.
-2. Click **Test** on the relevant channel.
+1. Go to **Notifications**.
+2. Click **Test** on the relevant email destination.
 3. If the test fails, review the error message shown beneath the channel entry.
-4. For email: verify the SMTP configuration using **Test Connection**.
+4. Verify the SMTP configuration using **Test Connection**.
 5. Check **Delivery History** for past error messages.
-6. For webhooks: confirm the URL is still valid (webhooks can expire or be revoked in the source system).
 
 ### Test SMTP connection fails
 

@@ -43,6 +43,7 @@ def get_resources(context: TenantContext = Depends(get_tenant_context)):
                 "provider": resource.provider,
                 "resource_id": resource.resource_id,
                 "resource_type": resource.resource_type,
+                "platform": resource.platform,
                 "name": resource.name,
                 "region": resource.region,
                 "status": resource.status,

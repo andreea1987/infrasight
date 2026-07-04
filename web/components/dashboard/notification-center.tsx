@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Bell, CheckCircle2, X } from "lucide-react";
 
 import { SeverityBadge } from "@/components/dashboard/severity-badge";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { AlertRecord } from "@/types/infrasight";
 
@@ -25,21 +26,24 @@ export function NotificationCenter({ alerts }: { alerts: AlertRecord[] }) {
 
   return (
     <div className="relative" ref={ref}>
-      <button
+      <Button
         onClick={() => setOpen((v) => !v)}
+        size="icon"
+        variant="ghost"
         className={cn(
-          "relative flex size-9 items-center justify-center rounded-lg border border-border text-muted-foreground transition-all hover:bg-muted hover:text-foreground",
+          "relative overflow-visible border-border",
           open && "bg-muted text-foreground border-primary/30",
         )}
         aria-label="Notifications"
+        type="button"
       >
         <Bell className="size-4" />
         {count > 0 && (
-          <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-white shadow-glow-destructive">
+          <span className="absolute right-0.5 top-0.5 flex min-w-4 translate-x-1/3 -translate-y-1/3 items-center justify-center rounded-full border border-card bg-destructive px-1 text-[9px] font-bold leading-4 text-white shadow-glow-destructive">
             {count > 9 ? "9+" : count}
           </span>
         )}
-      </button>
+      </Button>
 
       <AnimatePresence>
         {open && (
@@ -57,12 +61,15 @@ export function NotificationCenter({ alerts }: { alerts: AlertRecord[] }) {
                   {count > 0 ? `${count} active alert${count > 1 ? "s" : ""}` : "All clear"}
                 </p>
               </div>
-              <button
+              <Button
                 onClick={() => setOpen(false)}
-                className="text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Close notifications"
+                size="icon"
+                type="button"
+                variant="ghost"
               >
                 <X className="size-3.5" />
-              </button>
+              </Button>
             </div>
 
             <div className="max-h-80 overflow-y-auto">

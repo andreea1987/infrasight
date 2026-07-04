@@ -19,9 +19,17 @@ import { AuthenticationSettings } from "@/components/dashboard/authentication-se
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { OpenClawAiProvidersSettings } from "@/components/dashboard/openclaw-ai-providers-settings";
 import { UserManagement } from "@/components/dashboard/user-management";
+import {
+  DashboardTable,
+  DashboardTableCell,
+  DashboardTableHeader,
+  DashboardTableRow,
+} from "@/components/dashboard/dashboard-table";
+import { StatusBadge } from "@/components/dashboard/resource-badges";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ControlToolbar, ToggleSwitch } from "@/components/ui/controls";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
@@ -274,43 +282,29 @@ function SmtpPanel() {
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
                   className="pr-9"
                 />
-                <button
+                <Button
                   type="button"
                   aria-label={showPassword ? "Hide password" : "Show password"}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-0 top-0"
                   onClick={() => setShowPassword((v) => !v)}
+                  size="icon"
+                  variant="ghost"
                 >
                   {showPassword ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-                </button>
+                </Button>
               </div>
             </div>
             <div className="space-y-1">
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">TLS (STARTTLS)</p>
               <div className="flex h-9 items-center gap-2">
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={form.use_tls}
-                  onClick={() => setForm({ ...form, use_tls: !form.use_tls })}
-                  className={cn(
-                    "relative inline-flex h-5 w-9 cursor-pointer rounded-full border-2 border-transparent transition-colors",
-                    form.use_tls ? "bg-primary" : "bg-muted",
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform",
-                      form.use_tls ? "translate-x-4" : "translate-x-0",
-                    )}
-                  />
-                </button>
+                <ToggleSwitch checked={form.use_tls} onClick={() => setForm({ ...form, use_tls: !form.use_tls })} />
                 <span className="text-xs">{form.use_tls ? "Enabled" : "Disabled"}</span>
               </div>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <Button type="submit" size="sm" className="h-8 text-xs" disabled={saving}>
+          <ControlToolbar className="gap-3">
+            <Button type="submit" size="sm" className="text-xs" disabled={saving}>
               {saving ? (
                 <><Loader2 className="mr-1.5 size-3 animate-spin" />Saving…</>
               ) : "Save Configuration"}
@@ -319,7 +313,7 @@ function SmtpPanel() {
               type="button"
               variant="secondary"
               size="sm"
-              className="h-8 text-xs"
+              className="text-xs"
               disabled={testing}
               onClick={() => void handleTest()}
             >
@@ -335,7 +329,7 @@ function SmtpPanel() {
                 }
               </span>
             )}
-          </div>
+          </ControlToolbar>
         </form>
 
         {activeTestResult && (
@@ -398,6 +392,8 @@ const CHANNEL_CFG = {
 } as const;
 
 type ChannelType = keyof typeof CHANNEL_CFG;
+type SettingsMode = "notifications" | "administration";
+type SettingsPage = "users" | "authentication" | "destinations" | "ai-providers";
 
 /**
  * Renders one section (email / Slack / Teams) with an inline add form and
@@ -463,20 +459,20 @@ function ChannelSection({
       <CardContent className="flex flex-col gap-3">
         {/* Add form — validated before submission */}
         <form onSubmit={(e) => { e.preventDefault(); void handleAdd(); }} className="space-y-1.5">
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Input
               placeholder="Name"
               value={name}
               onChange={(e) => { setName(e.target.value); setErr(""); }}
-              className="h-8 w-28 shrink-0 text-xs"
+              className="w-28 shrink-0 text-xs"
             />
             <Input
               placeholder={placeholder}
               value={target}
               onChange={(e) => { setTarget(e.target.value); setErr(""); }}
-              className="h-8 min-w-0 flex-1 text-xs"
+              className="min-w-0 flex-1 text-xs"
             />
-            <Button type="submit" size="sm" className="h-8 shrink-0 text-xs" disabled={submitting}>
+            <Button type="submit" size="sm" className="shrink-0 text-xs" disabled={submitting}>
               {submitting ? <Loader2 className="size-3 animate-spin" /> : "Add"}
             </Button>
           </div>
@@ -518,11 +514,11 @@ function ChannelSection({
               )}
 
               {/* Action buttons — only one action runs at a time across all channels */}
-              <div className="flex flex-wrap gap-1.5">
+              <ControlToolbar>
                 <Button
                   size="sm"
                   variant="secondary"
-                  className="h-7 text-[11px]"
+                  className="text-[11px]"
                   disabled={anyPending}
                   onClick={() => void onAction(ch, "test")}
                 >
@@ -534,7 +530,7 @@ function ChannelSection({
                 <Button
                   size="sm"
                   variant="secondary"
-                  className="h-7 text-[11px]"
+                  className="text-[11px]"
                   disabled={anyPending}
                   onClick={() => void onAction(ch, ch.enabled ? "disable" : "enable")}
                 >
@@ -549,7 +545,7 @@ function ChannelSection({
                     <Button
                       size="sm"
                       variant="destructive"
-                      className="h-7 text-[11px]"
+                      className="text-[11px]"
                       disabled={anyPending}
                       onClick={() => void onAction(ch, "delete")}
                     >
@@ -560,7 +556,7 @@ function ChannelSection({
                     <Button
                       size="sm"
                       variant="secondary"
-                      className="h-7 text-[11px]"
+                      className="text-[11px]"
                       disabled={anyPending}
                       onClick={() => onCancelConfirmDelete()}
                     >
@@ -571,7 +567,7 @@ function ChannelSection({
                   <Button
                     size="sm"
                     variant="destructive"
-                    className="h-7 gap-1 text-[11px]"
+                    className="text-[11px]"
                     disabled={anyPending}
                     onClick={() => onConfirmDelete(ch.id)}
                   >
@@ -579,7 +575,7 @@ function ChannelSection({
                     Delete
                   </Button>
                 )}
-              </div>
+              </ControlToolbar>
 
               {/* Inline feedback: persists until the next action on this channel */}
               {result && (
@@ -632,72 +628,50 @@ function DeliveryHistory({
           <EmptyState text="No deliveries recorded yet." />
         ) : (
           <>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px]">
-                <thead>
-                  <tr className="border-b border-border">
-                    {["Time", "Channel", "Type", "Destination", "Status", "Response", "Error"].map((h) => (
-                      <th
-                        key={h}
-                        className="pb-2 pr-4 text-left text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
-                      >
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
+            <DashboardTable minWidth="640px">
+                <DashboardTableHeader columns={["Time", "Channel", "Type", "Destination", "Status", "Response", "Error"]} />
                 <tbody>
                   {visible.map((d) => {
                     const ok = d.status === "sent";
                     const skipped = d.status === "skipped";
                     return (
-                      <tr key={d.id} className="border-b border-border/50 last:border-0">
-                        <td className="py-2 pr-4 text-xs text-muted-foreground whitespace-nowrap">
+                      <DashboardTableRow key={d.id}>
+                        <DashboardTableCell className="whitespace-nowrap text-xs" muted>
                           {formatTs(d.sent_at)}
-                        </td>
-                        <td className="py-2 pr-4 text-xs font-medium">
+                        </DashboardTableCell>
+                        <DashboardTableCell className="text-xs font-medium">
                           {channelNamesById.get(d.channel_id ?? -1) ?? "—"}
-                        </td>
-                        <td className="py-2 pr-4">
+                        </DashboardTableCell>
+                        <DashboardTableCell>
                           <Badge className="text-[10px] normal-case">{d.channel_type}</Badge>
-                        </td>
-                        <td className="max-w-[160px] truncate py-2 pr-4 text-[11px] text-muted-foreground">
+                        </DashboardTableCell>
+                        <DashboardTableCell className="max-w-[160px] truncate text-[11px]" muted>
                           {d.target}
-                        </td>
-                        <td className="py-2 pr-4">
-                          <span
-                            className={cn(
-                              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold",
-                              ok
-                                ? "bg-primary/10 text-primary"
-                                : skipped
-                                ? "bg-muted text-muted-foreground"
-                                : "bg-destructive/10 text-destructive",
-                            )}
-                          >
-                            {ok ? <CheckCircle2 className="size-3" /> : <XCircle className="size-3" />}
-                            {ok ? "Sent" : skipped ? "Skipped" : "Failed"}
-                          </span>
-                        </td>
-                        <td className="py-2 pr-4 text-xs text-muted-foreground">
+                        </DashboardTableCell>
+                        <DashboardTableCell>
+                          <StatusBadge status={d.status} label={ok ? "Sent" : skipped ? "Skipped" : "Failed"} />
+                        </DashboardTableCell>
+                        <DashboardTableCell className="text-xs" muted>
                           {d.response_time_ms != null ? `${d.response_time_ms}ms` : "—"}
-                        </td>
-                        <td className="max-w-[200px] truncate py-2 text-[11px] text-muted-foreground">
+                        </DashboardTableCell>
+                        <DashboardTableCell className="max-w-[200px] truncate text-[11px]" muted>
                           {!ok && d.detail ? d.detail : "—"}
-                        </td>
-                      </tr>
+                        </DashboardTableCell>
+                      </DashboardTableRow>
                     );
                   })}
                 </tbody>
-              </table>
-            </div>
+            </DashboardTable>
             {deliveries.length > limit && (
-              <button
-                className="mt-3 text-xs text-primary hover:underline"
+              <Button
+                className="mt-3"
                 onClick={() => setLimit((l) => l + 10)}
+                size="sm"
+                type="button"
+                variant="ghost"
               >
                 Show more ({deliveries.length - limit} remaining)
-              </button>
+              </Button>
             )}
           </>
         )}
@@ -735,10 +709,12 @@ export function NotificationSettings(props: {
   ) => Promise<{ status?: string; detail?: string; response_time_ms?: number } | undefined>;
   channels: NotificationChannel[];
   deliveries: AlertDelivery[];
+  mode?: SettingsMode;
   onAddChannel: (channel: ChannelForm) => Promise<void>;
   workspaceId: string;
 }) {
-  const { channelAction, channels, deliveries, onAddChannel, workspaceId } = props;
+  const { channelAction, channels, deliveries, mode = "administration", onAddChannel, workspaceId } = props;
+  const defaultSettingsPage: SettingsPage = mode === "notifications" ? "destinations" : "users";
 
   // Tracks which channel+action is currently in flight so buttons show spinners.
   const [pendingAction, setPendingAction] = useState<{ id: number; action: string } | null>(null);
@@ -748,7 +724,7 @@ export function NotificationSettings(props: {
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   // Demo delivery entries injected into history when backend is unreachable.
   const [extraDeliveries, setExtraDeliveries] = useState<AlertDelivery[]>([]);
-  const [activeSettingsPage, setActiveSettingsPage] = useState<"users" | "authentication" | "destinations" | "ai-providers">("users");
+  const [activeSettingsPage, setActiveSettingsPage] = useState<SettingsPage>(defaultSettingsPage);
 
   const channelNamesById = useMemo(
     () => new Map(channels.map((c) => [c.id, c.name])),
@@ -864,38 +840,47 @@ export function NotificationSettings(props: {
     onConfirmDelete: (id: number) => setConfirmDeleteId(id),
     pendingAction,
   };
-
-  return (
-    <section className="flex flex-col gap-4">
-      <div className="flex flex-wrap gap-2">
-        {[
+  const settingsPages: { key: SettingsPage; label: string }[] =
+    mode === "notifications"
+      ? [{ key: "destinations", label: "Alert Destinations" }]
+      : [
           { key: "users", label: "Users" },
           { key: "authentication", label: "Authentication / SSO" },
           { key: "ai-providers", label: "OpenClaw / AI Providers" },
-          { key: "destinations", label: "Alert Destinations" },
-        ].map((item) => (
-          <button
+        ];
+  const visibleSettingsPage = settingsPages.some((page) => page.key === activeSettingsPage)
+    ? activeSettingsPage
+    : defaultSettingsPage;
+
+  return (
+    <section className="flex flex-col gap-4">
+      <ControlToolbar>
+        {settingsPages.map((item) => (
+          <Button
             key={item.key}
-            onClick={() => setActiveSettingsPage(item.key as typeof activeSettingsPage)}
+            onClick={() => setActiveSettingsPage(item.key)}
+            size="sm"
+            type="button"
+            variant={visibleSettingsPage === item.key ? "default" : "secondary"}
             className={cn(
-              "rounded-lg border px-3 py-2 text-xs font-semibold transition-colors",
-              activeSettingsPage === item.key
-                ? "border-primary/40 bg-primary/15 text-primary"
-                : "border-border bg-muted/20 text-muted-foreground hover:text-foreground",
+              "text-xs",
+              visibleSettingsPage === item.key
+                ? "border-primary/40 bg-primary/15 text-primary hover:bg-primary/20"
+                : "bg-muted/20 text-muted-foreground",
             )}
           >
             {item.label}
-          </button>
+          </Button>
         ))}
-      </div>
+      </ControlToolbar>
 
-      {activeSettingsPage === "users" && <UserManagement workspaceId={workspaceId} />}
+      {visibleSettingsPage === "users" && <UserManagement workspaceId={workspaceId} />}
 
-      {activeSettingsPage === "authentication" && <AuthenticationSettings workspaceId={workspaceId} />}
+      {visibleSettingsPage === "authentication" && <AuthenticationSettings workspaceId={workspaceId} />}
 
-      {activeSettingsPage === "ai-providers" && <OpenClawAiProvidersSettings workspaceId={workspaceId} />}
+      {visibleSettingsPage === "ai-providers" && <OpenClawAiProvidersSettings workspaceId={workspaceId} />}
 
-      {activeSettingsPage === "destinations" && (
+      {visibleSettingsPage === "destinations" && (
         <>
           <SmtpPanel />
           <div className="grid gap-4 lg:grid-cols-3">

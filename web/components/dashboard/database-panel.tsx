@@ -8,18 +8,24 @@ import {
   Database,
   Gauge,
   RefreshCw,
-  Search,
   ShieldCheck,
   SlidersHorizontal,
 } from "lucide-react";
 
+import {
+  DashboardTable,
+  DashboardTableCell,
+  DashboardTableHeader,
+  DashboardTableRow,
+} from "@/components/dashboard/dashboard-table";
 import { EmptyState } from "@/components/dashboard/empty-state";
+import { InfoTile } from "@/components/dashboard/info-tile";
 import { MetricCard } from "@/components/dashboard/metric-card";
+import { ProviderBadge } from "@/components/dashboard/resource-badges";
 import { SeverityBadge } from "@/components/dashboard/severity-badge";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { ControlToolbar, FilterGrid, SearchField } from "@/components/ui/controls";
 import { Select } from "@/components/ui/select";
 import { getAlertsForResource } from "@/dashboard/health";
 import { TechnologyIcon } from "@/dashboard/resourceIcons";
@@ -165,7 +171,7 @@ export function DatabasePanel({
               SQL Server and PostgreSQL discovery stays read-only and uses the shared discovery service.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <ControlToolbar>
             {[
               { label: "Discover SQL Server", discoveryTypes: ["mssql"] },
               { label: "Discover PostgreSQL", discoveryTypes: ["postgresql"] },
@@ -181,7 +187,7 @@ export function DatabasePanel({
                 {action.label}
               </Button>
             ))}
-          </div>
+          </ControlToolbar>
         </CardHeader>
       </Card>
 
@@ -194,16 +200,13 @@ export function DatabasePanel({
               Reset Filters
             </Button>
           </div>
-          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-6">
-            <div className="relative xl:col-span-2">
-              <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
-              <Input
-                className="pl-9"
-                placeholder="Search database name"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-              />
-            </div>
+          <FilterGrid>
+            <SearchField
+              className="xl:col-span-2"
+              placeholder="Search database name"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
             <Select value={provider} onChange={(event) => setProvider(event.target.value)}>
               {["all", ...unique(resources.map((resource) => resource.provider))].map((item) => (
                 <option key={item} value={item}>{item === "all" ? "All providers" : item}</option>
@@ -224,15 +227,15 @@ export function DatabasePanel({
                 <option key={item} value={item}>{item === "all" ? "All regions" : item}</option>
               ))}
             </Select>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
+          </FilterGrid>
+          <ControlToolbar>
             <span className="text-xs text-muted-foreground">Sort by</span>
             <Select value={sortBy} onChange={(event) => setSortBy(event.target.value as DatabaseSort)}>
               <option value="health_score">Health score</option>
               <option value="status">Status</option>
               <option value="provider">Provider</option>
             </Select>
-          </div>
+          </ControlToolbar>
         </CardHeader>
         <CardContent>
           {filteredDatabases.length ? (
@@ -263,54 +266,36 @@ function DatabaseTable({
   resources: Resource[];
 }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[1180px] border-collapse text-left text-sm">
-        <thead>
-          <tr className="border-b border-border text-xs uppercase tracking-[0.16em] text-muted-foreground">
-            <th className="px-3 py-3">Database</th>
-            <th className="px-3 py-3">Provider</th>
-            <th className="px-3 py-3">Status</th>
-            <th className="px-3 py-3">Health</th>
-            <th className="px-3 py-3">Score</th>
-            <th className="px-3 py-3">Region</th>
-            <th className="px-3 py-3">Open Alerts</th>
-            <th className="px-3 py-3">Last Checked</th>
-            <th className="px-3 py-3">Connection</th>
-            <th className="px-3 py-3" aria-label="Database actions" />
-          </tr>
-        </thead>
+    <DashboardTable minWidth="1180px">
+        <DashboardTableHeader columns={["Database", "Provider", "Status", "Health", "Score", "Region", "Open Alerts", "Last Checked", "Connection", { ariaLabel: "Database actions" }]} />
         <tbody>
           {resources.map((resource) => {
             const activeAlerts = getAlertsForResource(resource, alerts).filter((alert) => alert.status === "open");
             return (
-              <tr
-                className="cursor-pointer border-b border-border/70 transition-colors hover:bg-muted/30"
+              <DashboardTableRow
                 key={resource.id}
                 onClick={() => onSelectDatabase(resource.id)}
               >
-                <td className="px-3 py-3">
+                <DashboardTableCell>
                   <div className="flex items-center gap-2 font-medium">
                     <TechnologyIcon name={resource.resource_type || resource.provider} surface="table" />
                     {resource.name}
                   </div>
                   <div className="ml-6 text-xs text-muted-foreground">{resource.resource_type}</div>
-                </td>
-                <td className="px-3 py-3">
-                  <Badge className="inline-flex items-center gap-1.5">
-                    <TechnologyIcon name={resource.provider} surface="table" />
-                    {resource.provider}
-                  </Badge>
-                </td>
-                <td className="px-3 py-3"><SeverityBadge severity={resource.status} /></td>
-                <td className="px-3 py-3"><SeverityBadge severity={resource.health_status ?? "Unknown"} /></td>
-                <td className="px-3 py-3 font-medium">{resource.health_score ?? "n/a"}</td>
-                <td className="px-3 py-3 text-muted-foreground">{resource.region}</td>
-                <td className="px-3 py-3 text-muted-foreground">{activeAlerts.length}</td>
-                <td className="px-3 py-3 text-muted-foreground">{lastChecked(resource, metrics)}</td>
-                <td className="px-3 py-3">
+                </DashboardTableCell>
+                <DashboardTableCell>
+                  <ProviderBadge provider={resource.provider} />
+                </DashboardTableCell>
+                <DashboardTableCell><SeverityBadge severity={resource.status} /></DashboardTableCell>
+                <DashboardTableCell><SeverityBadge severity={resource.health_status ?? "Unknown"} /></DashboardTableCell>
+                <DashboardTableCell className="font-medium">{resource.health_score ?? "n/a"}</DashboardTableCell>
+                <DashboardTableCell muted>{resource.region}</DashboardTableCell>
+                <DashboardTableCell muted>{activeAlerts.length}</DashboardTableCell>
+                <DashboardTableCell muted>{lastChecked(resource, metrics)}</DashboardTableCell>
+                <DashboardTableCell>
                   <SeverityBadge severity={connectionStatus(resource)} />
-                </td>
-                <td className="px-3 py-3 text-right">
+                </DashboardTableCell>
+                <DashboardTableCell align="right">
                   <Button
                     size="sm"
                     variant="secondary"
@@ -321,13 +306,12 @@ function DatabaseTable({
                   >
                     Details
                   </Button>
-                </td>
-              </tr>
+                </DashboardTableCell>
+              </DashboardTableRow>
             );
           })}
         </tbody>
-      </table>
-    </div>
+    </DashboardTable>
   );
 }
 
@@ -376,10 +360,10 @@ export function DatabaseDetailsView({
               ["Last checked", lastChecked(database, metrics)],
               ["Resource ID", database.resource_id ?? database.id],
             ].map(([label, value]) => (
-              <div key={label} className="rounded-md border border-border bg-background/60 p-3">
+              <InfoTile key={label}>
                 <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
                 <p className="mt-1 break-words text-sm font-medium">{value}</p>
-              </div>
+              </InfoTile>
             ))}
           </CardContent>
         </Card>
@@ -545,22 +529,22 @@ function SignalCard({
 
 function EventRow({ meta, severity, title }: { meta: string; severity: string; title: string }) {
   return (
-    <div className="rounded-md border border-border bg-background/60 p-3">
+    <InfoTile>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="font-medium">{title}</p>
         <SeverityBadge severity={severity} />
       </div>
       <p className="mt-1 text-xs text-muted-foreground">{meta}</p>
-    </div>
+    </InfoTile>
   );
 }
 
 function MetricRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid grid-cols-[1fr_auto] gap-3 rounded-md border border-border bg-background/60 p-3">
+    <InfoTile className="grid grid-cols-[1fr_auto] gap-3">
       <span className="text-sm font-medium">{label}</span>
       <span className="text-sm text-muted-foreground">{value || "n/a"}</span>
-    </div>
+    </InfoTile>
   );
 }
 

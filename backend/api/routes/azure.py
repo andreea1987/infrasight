@@ -57,6 +57,7 @@ async def sync_azure_virtual_machines(context: TenantContext = Depends(get_tenan
                 existing.name = virtual_machine["name"]
                 existing.region = virtual_machine["region"]
                 existing.status = virtual_machine["status"]
+                existing.platform = virtual_machine["metadata"].get("platform") or virtual_machine["metadata"].get("os")
                 existing.metadata_json = {
                     **virtual_machine["metadata"],
                     "tenant_id": context.tenant_id,
@@ -72,6 +73,7 @@ async def sync_azure_virtual_machines(context: TenantContext = Depends(get_tenan
                     provider=virtual_machine["provider"],
                     resource_id=virtual_machine["resource_id"],
                     resource_type=virtual_machine["resource_type"],
+                    platform=virtual_machine["metadata"].get("platform") or virtual_machine["metadata"].get("os"),
                     name=virtual_machine["name"],
                     region=virtual_machine["region"],
                     status=virtual_machine["status"],

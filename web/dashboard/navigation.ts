@@ -7,12 +7,14 @@
 
 import {
   Activity,
+  Bell,
   Bot,
   Database,
   GitBranch,
   LayoutDashboard,
   Network,
   PlugZap,
+  Settings,
   Server,
   ShieldAlert,
   ShipWheel,
@@ -28,10 +30,11 @@ export const navigationGroups: NavigationGroup[] = [
   },
   {
     label: "Operations",
-    items: [
-      { name: "Alerts", icon: ShieldAlert },
-      { name: "OpenClaw", icon: Bot },
-    ],
+    items: [{ name: "Alerts", icon: ShieldAlert }],
+  },
+  {
+    label: "OpenClaw",
+    items: [{ name: "OpenClaw", icon: Bot }],
   },
   {
     label: "Infrastructure",
@@ -41,19 +44,25 @@ export const navigationGroups: NavigationGroup[] = [
       { name: "Containers", icon: Activity },
       { name: "Kubernetes", icon: ShipWheel },
       { name: "Topology", icon: GitBranch },
-      { name: "Connectors", icon: PlugZap },
     ],
   },
   {
     label: "Inventory",
-    items: [{ name: "Assets", icon: Network }],
+    items: [{ name: "Inventory", icon: Network }],
   },
   {
     label: "Automation",
     items: [{ name: "Automation", icon: Zap }],
   },
   {
-    label: "Settings",
-    items: [{ name: "Settings", icon: LayoutDashboard }],
+    label: "Notifications",
+    items: [{ name: "Notifications", icon: Bell }],
+  },
+  {
+    label: "Administration",
+    items: [
+      { name: "Connectors", icon: PlugZap },
+      { name: "Administration", icon: Settings },
+    ],
   },
 ];

@@ -138,6 +138,7 @@ def promote_alert_to_incident_knowledge(db, alert, *, actor="system"):
     resource_metadata = resource.metadata_json or {} if resource else {}
     provider = resource.provider if resource else (alert.metadata_json or {}).get("provider")
     resource_type = resource.resource_type if resource else (alert.metadata_json or {}).get("resource_type")
+    platform = resource.platform if resource else (alert.metadata_json or {}).get("platform")
     now = datetime.utcnow()
 
     knowledge = None
@@ -379,6 +380,7 @@ def _record_metric(
             "organization_id": organization_id or resource.organization_id or "internal",
             "provider": resource.provider,
             "resource_type": resource.resource_type,
+            "platform": resource.platform,
         },
     )
 
@@ -461,6 +463,7 @@ def _upsert_open_alert(db, resource, payload, tenant_id=None, organization_id=No
             "organization_id": organization_id,
             "provider": resource.provider,
             "resource_type": resource.resource_type,
+            "platform": resource.platform,
             **payload.get("metadata", {}),
         }
         if changed:
@@ -498,6 +501,7 @@ def _upsert_open_alert(db, resource, payload, tenant_id=None, organization_id=No
             "organization_id": organization_id,
             "provider": resource.provider,
             "resource_type": resource.resource_type,
+            "platform": resource.platform,
             **payload.get("metadata", {}),
         },
     )
@@ -649,6 +653,7 @@ def _upsert_openclaw_resolution(db, knowledge, alert, resource):
     library_item.environment_signature_json = {
         "provider": resource.provider if resource else None,
         "resource_type": resource.resource_type if resource else None,
+        "platform": platform,
         "resource_id": alert.resource_id,
         "source": alert.source,
         "metric_name": alert.metric_name,

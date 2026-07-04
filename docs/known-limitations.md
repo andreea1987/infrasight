@@ -1,7 +1,7 @@
 # InfraSight — Known Limitations
 
 > This document lists features that are currently incomplete, simulated, placeholder-only, or pending backend integration.  
-> Last updated: June 2026
+> Last updated: July 2026
 
 ---
 
@@ -13,7 +13,7 @@
 
 The `/auth/sso/callback` endpoint returns **HTTP 501 Not Implemented**. This means:
 
-- You can configure SAML and OIDC providers in **Settings → Authentication**.
+- You can configure SAML and OIDC providers in **Administration → Authentication**.
 - The configuration is stored and the "Test" button runs a structural smoke test.
 - However, actual SSO logins **do not work**. Clicking "Sign in with SSO" will redirect to the IdP but the callback will fail.
 
@@ -35,7 +35,7 @@ There is no password reset flow (forgot password email, reset link) in the curre
 
 **Status:** Data model and UI exist; active sync not implemented.
 
-The **Settings → Users** page includes a section about SCIM (System for Cross-domain Identity Management). The database schema and placeholder configuration exist, but InfraSight does not currently act as a SCIM service provider. External identity providers (Okta, Azure AD, etc.) cannot push user lifecycle events to InfraSight at this time.
+The **Administration → Users** page includes a section about SCIM (System for Cross-domain Identity Management). The database schema and placeholder configuration exist, but InfraSight does not currently act as a SCIM service provider. External identity providers (Okta, Azure AD, etc.) cannot push user lifecycle events to InfraSight at this time.
 
 ---
 
@@ -44,6 +44,16 @@ The **Settings → Users** page includes a section about SCIM (System for Cross-
 **Status:** Not implemented (depends on SSO callback, which is also pending).
 
 The user management UI includes an "Auto-provisioning" toggle on SSO provider configurations. When implemented, this would automatically create an InfraSight user account the first time someone logs in via SSO. Currently, this does not function.
+
+---
+
+## RBAC and Enterprise Access Control
+
+### RBAC is Planned Beyond Current Role Checks
+
+**Status:** Basic role checks exist; full RBAC is planned.
+
+InfraSight has role concepts and permission checks for selected API operations, but a full enterprise RBAC model is not complete. Fine-grained permissions, policy management, audit-grade role assignment workflows, and full SSO group-to-role enforcement are planned future work.
 
 ---
 
@@ -98,6 +108,24 @@ OpenClaw cannot acknowledge alerts, modify resources, trigger syncs, or make any
 
 ---
 
+### Next Release Enhancements Planned
+
+**Status:** Roadmap.
+
+The next release is planned to improve OpenClaw with:
+
+- Infrastructure-aware AI assistant behavior
+- Alert analysis
+- AI operational summaries
+- Context-aware troubleshooting
+- Runbook recommendations
+- Knowledge base integration
+- AI-assisted resource discovery
+
+These capabilities are not implemented in the current release.
+
+---
+
 ## Dashboard
 
 ### Topology Preview Placeholder
@@ -114,7 +142,7 @@ The dashboard overview shows a "Topology preview coming soon" placeholder card. 
 
 **Status:** All filtering is applied in the browser against the loaded snapshot.
 
-When you open any resource page (Servers, Databases, Containers, Kubernetes, Assets), InfraSight loads a complete data snapshot from the backend. All filters — search, provider, status, health, type — are applied client-side to this snapshot.
+When you open any resource page (Servers, Databases, Containers, Kubernetes, Inventory), InfraSight loads a complete data snapshot from the backend. All filters — search, provider, status, health, type — are applied client-side to this snapshot.
 
 **Implications:**
 - Filters do not query the backend for refined results.
@@ -127,31 +155,55 @@ When you open any resource page (Servers, Databases, Containers, Kubernetes, Ass
 
 ## Connectors
 
-### Connector Registration Requires Environment Variables
+### Cloud Connectors Use Mocked Backend Workflows
 
-**Status:** Backend registration API exists; no in-UI credential entry form.
+**Status:** Implemented as persisted mocked workflows; real provider integrations pending.
 
-Setting up cloud connectors (AWS, Azure) currently requires setting environment variables on the backend server. The Connectors page shows setup instructions and health status, but there is no form in the UI to enter AWS access keys or Azure service principal credentials.
+The Connectors page includes real onboarding forms, lifecycle actions, encrypted credential storage, mocked connection tests, mocked discovery, mocked synchronization, and local resource import. These workflows are designed to behave like production from the UI perspective, but they do not call real AWS, Azure, Docker, Kubernetes, or host-agent APIs.
 
-**Planned:** A secure credential entry form in the Connectors UI that stores credentials encrypted in the database.
+Current connector support:
+
+- AWS (API) — mocked IAM Role / Access Keys workflow
+- Azure (API) — mocked Service Principal / Managed Identity-style workflow
+- Windows/Linux Agent (Agent) — mocked enrollment token and verification workflow
+- Docker (Agent / Docker Socket) — mocked container/image discovery
+- Kubernetes (Helm) — mocked token, Helm command, verification, and resource discovery
+
+**Planned:** Replace mocked provider implementations with real cloud, agent, Docker, and Kubernetes integrations behind the existing connector lifecycle API.
+
+---
+
+### Resource Discovery is Simulated
+
+**Status:** Mocked connector discovery persists local data.
+
+Connector discovery creates representative resources and imports them into the normalized inventory. This updates Dashboard counts, Inventory, Servers, Databases, Containers, Kubernetes, and Topology views, but the resources are simulated.
+
+Mocked discovery currently returns:
+
+- AWS: EC2, RDS, EKS
+- Azure: Virtual Machines, Azure SQL, AKS
+- Windows/Linux Agent: Servers, Services, Processes
+- Docker: Containers, Images
+- Kubernetes: Nodes, Pods, Deployments
 
 ---
 
 ### Database and Kubernetes Discovery
 
-**Status:** Partially implemented.
+**Status:** Mixed implementation.
 
 PostgreSQL and MSSQL discovery logic exists, but it requires connection details in the backend discovery request payload. The Databases page does not currently collect those details, so the UI action may complete without importing new on-prem database assets.
 
-Kubernetes discovery is scaffolded and can return zero assets. Kubernetes resources may still appear when supplied by another ingestion path or seeded dataset.
+Kubernetes resources can be imported through the mocked connector workflow. Real Kubernetes cluster discovery through Helm/service account integration is not implemented yet.
 
 ---
 
 ### On-Premises Agent Installation
 
-**Status:** SSH/WinRM configuration only; no installable agent binary.
+**Status:** Mocked onboarding only; no installable production agent binary.
 
-The Linux and Windows "agent" connectors use SSH and WinRM respectively to collect data remotely. There is no downloadable agent binary to install on target hosts. All collection is pull-based from the backend.
+The Windows/Linux Agent connector can generate enrollment tokens, display installation commands, show connected-agent examples, and verify through mocked backend workflows. There is no production agent binary or real agent ingestion service in this release.
 
 ---
 

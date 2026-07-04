@@ -144,6 +144,7 @@ def import_discovered_assets(db, assets, tenant_id="internal", organization_id="
             resource.organization_id = organization_id
             resource.provider = asset.provider
             resource.resource_type = asset.resource_type
+            resource.platform = asset.metadata.get("platform") or asset.metadata.get("technology")
             resource.name = asset.name
             resource.region = asset.region
             resource.status = asset.status
@@ -156,6 +157,7 @@ def import_discovered_assets(db, assets, tenant_id="internal", organization_id="
                 provider=asset.provider,
                 resource_id=asset.resource_id,
                 resource_type=asset.resource_type,
+                platform=asset.metadata.get("platform") or asset.metadata.get("technology"),
                 name=asset.name,
                 region=asset.region,
                 status=asset.status,

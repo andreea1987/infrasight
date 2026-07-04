@@ -3,9 +3,9 @@
  * =====================
  * Centralised REST client for all InfraSight backend calls.
  *
- * Multi-tenancy: every request carries X-InfraSight-Tenant / Organization /
- * Actor / Role headers so the backend can scope queries correctly.
- * Call setActiveOrganization() when the user switches org in the sidebar.
+ * Multi-tenancy: every request carries workspace, organization, actor and role
+ * headers so the backend can scope queries correctly. Call setActiveOrganization()
+ * when the user switches workspace or organization in the sidebar.
  *
  * OpenClaw WebSocket: use getOpenClawWebSocketUrl() to get the streaming
  * chat endpoint URL including the active tenant as query params.
@@ -30,7 +30,11 @@ import type {
   AuthSession,
   ConnectorCatalogItem,
   ConnectorHealth,
+  ConnectorInstance,
+  ConnectorInstancePayload,
+  ConnectorOperationResult,
   ConnectorRegistration,
+  DiscoveredConnectorResource,
   DiscoveryRun,
   DiscoverySummary,
   Organization,
@@ -53,13 +57,15 @@ const LOCAL_AI_PROVIDERS_FALLBACK_KEY = "infrasight.localAiProviders";
 /** WebSocket URL for the OpenClaw streaming chat endpoint. */
 export const OPENCLAW_WS_URL = `${WS_URL}/openclaw/ws/chat`;
 
+let activeWorkspace = "internal";
 let activeOrganization = "internal";
 let activeActor = "dashboard";
 let activeRole = "msp_admin";
 
-/** Update the active organization context for all subsequent API calls. */
-export function setActiveOrganization(tenantId: string) {
-  activeOrganization = tenantId || "internal";
+/** Update the active workspace/organization context for all subsequent API calls. */
+export function setActiveOrganization(workspaceId: string, organizationId?: string) {
+  activeWorkspace = workspaceId || organizationId || "internal";
+  activeOrganization = organizationId || workspaceId || "internal";
 }
 
 export function getActiveOrganization() {
@@ -78,7 +84,7 @@ export function setAuthContext(session: AuthSession | null) {
  */
 export function getOpenClawWebSocketUrl() {
   const params = new URLSearchParams({
-    tenant: activeOrganization,
+    tenant: activeWorkspace,
     organization: activeOrganization,
   });
 
@@ -99,7 +105,7 @@ export function getOpenClawWebSocketUrl() {
  */
 function tenantHeaders(extra: Record<string, string> = {}): HeadersInit {
   return {
-    "X-InfraSight-Tenant": activeOrganization,
+    "X-InfraSight-Tenant": activeWorkspace,
     "X-InfraSight-Organization": activeOrganization,
     "X-InfraSight-Actor": activeActor,
     "X-InfraSight-Role": activeRole,
@@ -737,6 +743,30 @@ export function fetchConnectorCatalog() {
 
 export function fetchConnectorRegistrations() {
   return getJson<ConnectorRegistration[]>("/connectors");
+}
+
+export function fetchConnectorInstances() {
+  return getJson<ConnectorInstance[]>("/connectors/instances");
+}
+
+export function saveConnectorInstance(payload: ConnectorInstancePayload) {
+  return postJson<ConnectorInstance>("/connectors/instances", payload);
+}
+
+export function testConnectorConnection(connectorId: number) {
+  return postJson<ConnectorOperationResult>(`/connectors/instances/${connectorId}/test`);
+}
+
+export function runConnectorDiscovery(connectorId: number) {
+  return postJson<ConnectorOperationResult>(`/connectors/instances/${connectorId}/discovery`);
+}
+
+export function synchronizeConnector(connectorId: number) {
+  return postJson<ConnectorOperationResult>(`/connectors/instances/${connectorId}/sync`);
+}
+
+export function fetchConnectorResources(connectorId: number) {
+  return getJson<DiscoveredConnectorResource[]>(`/connectors/instances/${connectorId}/resources`);
 }
 
 // ---------------------------------------------------------------------------
